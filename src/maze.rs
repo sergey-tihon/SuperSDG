@@ -39,7 +39,7 @@ fn setup(
     for (z, &s) in map.iter().enumerate() {
         for (x, c) in s.chars().enumerate() {
             if c == '#' {
-                commands.spawn_bundle(PbrBundle {
+                commands.spawn(PbrBundle {
                     mesh: meshes.add(Mesh::from(shape::Box {
                         min_x: x as f32,
                         max_x: x as f32 + 1.0,
@@ -59,7 +59,7 @@ fn setup(
         }
     }
     // ground plane
-    commands.spawn_bundle(PbrBundle {
+    commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Plane { size: 20.0 })),
         material: materials.add(StandardMaterial {
             base_color: Color::DARK_GREEN,
@@ -71,7 +71,7 @@ fn setup(
     });
 
     // camera
-    commands.spawn_bundle(Camera3dBundle {
+    commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(17.0, 25.0, 35.0)
             .looking_at(Vec3::new(10.0, 0.0, 10.0), Vec3::Y),
         ..default()
@@ -85,7 +85,7 @@ fn setup(
 
     // directional 'sun' light
     const HALF_SIZE: f32 = 10.0;
-    commands.spawn_bundle(DirectionalLightBundle {
+    commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
             // Configure the projection to better fit the scene
             shadow_projection: OrthographicProjection {
