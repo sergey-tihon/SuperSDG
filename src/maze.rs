@@ -4,7 +4,7 @@ pub struct MazePlugin;
 
 impl Plugin for MazePlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup);
+        app.add_systems(Startup, setup);
     }
 }
 
@@ -19,18 +19,18 @@ fn setup(
         "#  ##### ########  #",
         "#      #      #    #",
         "#  ########## ###  #",
-        "#                  #",
+        "#        ####      #",
         "#  ##### ########  #",
         "#      #      #    #",
         "#  ########## ###  #",
-        "#                  #",
+        "#    ###           #",
         "#  ##### ########  #",
         "#      #      #    #",
         "#  ########## ###  #",
-        "#                  #",
+        "#     #####        #",
         "#                  #",
         "#  ##### ########  #",
-        "#      #      #    #",
+        "#    ###      #    #",
         "#  ########## ###  #",
         "#                  #",
         "####################",
@@ -60,7 +60,10 @@ fn setup(
     }
     // ground plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane { size: 20.0 })),
+        mesh: meshes.add(Mesh::from(shape::Plane {
+            size: 20.0,
+            subdivisions: 0,
+        })),
         material: materials.add(StandardMaterial {
             base_color: Color::DARK_GREEN,
             perceptual_roughness: 1.0,
@@ -84,19 +87,8 @@ fn setup(
     });
 
     // directional 'sun' light
-    const HALF_SIZE: f32 = 10.0;
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
-            // Configure the projection to better fit the scene
-            shadow_projection: OrthographicProjection {
-                left: -HALF_SIZE,
-                right: HALF_SIZE,
-                bottom: -HALF_SIZE,
-                top: HALF_SIZE,
-                near: -10.0 * HALF_SIZE,
-                far: 10.0 * HALF_SIZE,
-                ..default()
-            },
             shadows_enabled: true,
             ..default()
         },

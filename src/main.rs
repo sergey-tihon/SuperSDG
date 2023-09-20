@@ -1,32 +1,33 @@
-use bevy::diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin};
 use bevy::prelude::*;
-use bevy_inspector_egui::WorldInspectorPlugin;
+use bevy::window::{PresentMode, WindowMode, WindowResolution, WindowTheme};
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use demo::DemoLightPlugin;
+use maze::MazePlugin;
 
 mod demo;
 mod maze;
 
 fn main() {
     App::new()
-        // .insert_resource(WindowDescriptor {
-        //     title: "SuperSDG3: From dust to Rust".to_string(),
-        //     //mode: bevy::window::WindowMode::Fullscreen,
-        //     ..Default::default()
-        // })
-        //.add_plugins(DefaultPlugins.set(WindowPlugin, false))
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            window: WindowDescriptor {
-                title: "SuperSDG3: From dust to Rust".to_string(),
-                mode: bevy::window::WindowMode::Fullscreen,
-                scale_factor_override: Some(2.0),
+        .add_plugins((
+            DefaultPlugins.set(WindowPlugin {
+                primary_window: Some(Window {
+                    title: "SuperSDG3: From dust to Rust".to_string(),
+                    present_mode: PresentMode::AutoVsync,
+                    window_theme: Some(WindowTheme::Dark),
+                    mode: WindowMode::Windowed,
+                    position: WindowPosition::At(IVec2 { x: 0, y: 0 }),
+                    resolution: WindowResolution::new(1024., 1460.),
+                    ..default()
+                }),
                 ..default()
-            },
-            ..default()
-        }))
-        .add_plugin(LogDiagnosticsPlugin::default())
-        .add_plugin(FrameTimeDiagnosticsPlugin::default())
-        .add_plugin(WorldInspectorPlugin::new())
-        //.add_plugin(demo::Demo3DPlugin)
-        .add_plugin(maze::MazePlugin)
-        .add_system(bevy::window::close_on_esc)
+            }),
+            //DemoLightPlugin,
+            MazePlugin,
+            WorldInspectorPlugin::new(),
+            //LogDiagnosticsPlugin::default(),
+            //FrameTimeDiagnosticsPlugin,
+        ))
+        .add_systems(Update, bevy::window::close_on_esc)
         .run();
 }

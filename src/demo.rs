@@ -1,14 +1,16 @@
-//! Illustrates different lights of various types and colors, some static, some moving over a simple scene.
+//! Illustrates different lights of various types and colors, some static, some moving over
+//! a simple scene.
 
-use bevy::prelude::*;
+use std::f32::consts::PI;
 
-pub struct Demo3DPlugin;
+use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 
-impl Plugin for Demo3DPlugin {
+pub struct DemoLightPlugin;
+
+impl Plugin for DemoLightPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(setup)
-            .add_system(movement)
-            .add_system(animate_light_direction);
+        app.add_systems(Startup, setup)
+            .add_systems(Update, (movement, animate_light_direction));
     }
 }
 
@@ -20,10 +22,11 @@ fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     // ground plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::Plane { size: 10.0 })),
+        mesh: meshes.add(shape::Plane::from_size(10.0).into()),
         material: materials.add(StandardMaterial {
             base_color: Color::WHITE,
             perceptual_roughness: 1.0,
@@ -34,7 +37,7 @@ fn setup(
 
     // left wall
     let mut transform = Transform::from_xyz(2.5, 2.5, 0.0);
-    transform.rotate_z(std::f32::consts::FRAC_PI_2);
+    transform.rotate_z(PI / 2.);
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Box::new(5.0, 0.15, 5.0))),
         transform,
@@ -47,7 +50,7 @@ fn setup(
     });
     // back (right) wall
     let mut transform = Transform::from_xyz(0.0, 2.5, -2.5);
-    transform.rotate_x(std::f32::consts::FRAC_PI_2);
+    transform.rotate_x(PI / 2.);
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::Box::new(5.0, 0.15, 5.0))),
         transform,
@@ -59,9 +62,28 @@ fn setup(
         ..default()
     });
 
+    // Bevy logo to demonstrate alpha mask shadows
+    let mut transform = Transform::from_xyz(-2.2, 0.5, 1.0);
+    transform.rotate_y(PI / 8.);
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(Mesh::from(shape::Quad::new(Vec2::new(2.0, 0.5)))),
+            transform,
+            material: materials.add(StandardMaterial {
+                base_color_texture: Some(asset_server.load("branding/bevy_logo_light.png")),
+                perceptual_roughness: 1.0,
+                alpha_mode: AlphaMode::Mask(0.5),
+                cull_mode: None,
+                ..default()
+            }),
+            ..default()
+        },
+        Movable,
+    ));
+
     // cube
-    commands
-        .spawn(PbrBundle {
+    commands.spawn((
+        PbrBundle {
             mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
             material: materials.add(StandardMaterial {
                 base_color: Color::PINK,
@@ -69,11 +91,12 @@ fn setup(
             }),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
             ..default()
-        })
-        .insert(Movable);
+        },
+        Movable,
+    ));
     // sphere
-    commands
-        .spawn(PbrBundle {
+    commands.spawn((
+        PbrBundle {
             mesh: meshes.add(Mesh::from(shape::UVSphere {
                 radius: 0.5,
                 ..default()
@@ -84,8 +107,9 @@ fn setup(
             }),
             transform: Transform::from_xyz(1.5, 1.0, 1.5),
             ..default()
-        })
-        .insert(Movable);
+        },
+        Movable,
+    ));
 
     // ambient light
     commands.insert_resource(AmbientLight {
@@ -114,7 +138,7 @@ fn setup(
                 })),
                 material: materials.add(StandardMaterial {
                     base_color: Color::RED,
-                    emissive: Color::rgba_linear(100.0, 0.0, 0.0, 0.0),
+                    emissive: Color::rgba_linear(7.13, 0.0, 0.0, 0.0),
                     ..default()
                 }),
                 ..default()
@@ -138,9 +162,7 @@ fn setup(
         })
         .with_children(|builder| {
             builder.spawn(PbrBundle {
-                transform: Transform::from_rotation(Quat::from_rotation_x(
-                    std::f32::consts::PI / 2.0,
-                )),
+                transform: Transform::from_rotation(Quat::from_rotation_x(PI / 2.0)),
                 mesh: meshes.add(Mesh::from(shape::Capsule {
                     depth: 0.125,
                     radius: 0.1,
@@ -148,7 +170,7 @@ fn setup(
                 })),
                 material: materials.add(StandardMaterial {
                     base_color: Color::GREEN,
-                    emissive: Color::rgba_linear(0.0, 100.0, 0.0, 0.0),
+                    emissive: Color::rgba_linear(0.0, 7.13, 0.0, 0.0),
                     ..default()
                 }),
                 ..default()
@@ -176,7 +198,7 @@ fn setup(
                 })),
                 material: materials.add(StandardMaterial {
                     base_color: Color::BLUE,
-                    emissive: Color::rgba_linear(0.0, 0.0, 100.0, 0.0),
+                    emissive: Color::rgba_linear(0.0, 0.0, 7.13, 0.0),
                     ..default()
                 }),
                 ..default()
@@ -184,27 +206,25 @@ fn setup(
         });
 
     // directional 'sun' light
-    const HALF_SIZE: f32 = 10.0;
     commands.spawn(DirectionalLightBundle {
         directional_light: DirectionalLight {
-            // Configure the projection to better fit the scene
-            shadow_projection: OrthographicProjection {
-                left: -HALF_SIZE,
-                right: HALF_SIZE,
-                bottom: -HALF_SIZE,
-                top: HALF_SIZE,
-                near: -10.0 * HALF_SIZE,
-                far: 10.0 * HALF_SIZE,
-                ..default()
-            },
             shadows_enabled: true,
             ..default()
         },
         transform: Transform {
             translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_rotation_x(-std::f32::consts::FRAC_PI_4),
+            rotation: Quat::from_rotation_x(-PI / 4.),
             ..default()
         },
+        // The default cascade config is designed to handle large scenes.
+        // As this example has a much smaller world, we can tighten the shadow
+        // bounds for better visual quality.
+        cascade_shadow_config: CascadeShadowConfigBuilder {
+            first_cascade_far_bound: 4.0,
+            maximum_distance: 10.0,
+            ..default()
+        }
+        .into(),
         ..default()
     });
 
@@ -213,6 +233,23 @@ fn setup(
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
         ..default()
     });
+
+    // example instructions
+    commands.spawn(
+        TextBundle::from_section(
+            "Use arrow keys to move objects",
+            TextStyle {
+                font_size: 20.0,
+                ..default()
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(12.0),
+            left: Val::Px(12.0),
+            ..default()
+        }),
+    );
 }
 
 fn animate_light_direction(
