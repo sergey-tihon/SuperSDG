@@ -5,8 +5,7 @@
             "name": "Cargo run",
             "type": "lldb",
             "request": "custom",
-            "preLaunchTask": "cargo run",
-            "problemMatcher": []
+            "preLaunchTask": "cargo run"
         }
     ]
 }

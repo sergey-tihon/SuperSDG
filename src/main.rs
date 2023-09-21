@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode, WindowResolution, WindowTheme};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use demo::DemoLightPlugin;
-use maze::MazePlugin;
+use maze_render::MazePlugin;
 
 mod demo;
-mod maze;
+mod maze_render;
 
 fn main() {
     App::new()
@@ -17,13 +16,13 @@ fn main() {
                     window_theme: Some(WindowTheme::Dark),
                     mode: WindowMode::Windowed,
                     position: WindowPosition::At(IVec2 { x: 0, y: 0 }),
-                    resolution: WindowResolution::new(1024., 1460.),
+                    resolution: WindowResolution::new(1280., 1460.),
                     ..default()
                 }),
                 ..default()
             }),
-            //DemoLightPlugin,
             MazePlugin,
+            //demo::DemoLightPlugin,
             WorldInspectorPlugin::new(),
             //LogDiagnosticsPlugin::default(),
             //FrameTimeDiagnosticsPlugin,
