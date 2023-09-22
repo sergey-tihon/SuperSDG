@@ -5,6 +5,8 @@ use bevy::{
     render::render_resource::{AsBindGroup, ShaderRef},
 };
 
+use super::level::MazeLevel;
+
 pub struct MazeRenderPlugin;
 
 impl Plugin for MazeRenderPlugin {
@@ -34,6 +36,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn create_array_texture(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
+    maze: Res<MazeLevel>,
     mut loading_texture: ResMut<LoadingTexture>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut texture_materials: ResMut<Assets<TextureMaterial>>,
@@ -45,29 +48,6 @@ fn create_array_texture(
         return;
     }
     loading_texture.is_loaded = true;
-
-    let map = vec![
-        "####################",
-        "#                  #",
-        "#  ##### ######### #",
-        "#      #      #    #",
-        "#  ########## ###  #",
-        "#        ####      #",
-        "#  ##### ######### #",
-        "#      #      #    #",
-        "#  ########## ###  #",
-        "#    ###           #",
-        "#  ##### ######### #",
-        "#      #      #  # #",
-        "#  ########## #### #",
-        "#     #####        #",
-        "#                # #",
-        "#  ##### ######### #",
-        "#    ###      #    #",
-        "#  ########## ###  #",
-        "#                  #",
-        "####################",
-    ];
 
     let cube_handle = meshes.add(Mesh::from(shape::Cube { size: 1.0 }));
     let wall_material_handle = texture_materials.add(TextureMaterial {
@@ -82,7 +62,7 @@ fn create_array_texture(
         texture: loading_texture.floor_handle.clone(),
     });
 
-    for (z, &s) in map.iter().enumerate() {
+    for (z, &s) in maze.map.iter().enumerate() {
         for (x, c) in s.chars().enumerate() {
             if c == '#' {
                 commands.spawn(MaterialMeshBundle {
