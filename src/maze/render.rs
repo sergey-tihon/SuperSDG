@@ -62,8 +62,8 @@ fn create_array_texture(
         texture: loading_texture.floor_handle.clone(),
     });
 
-    for (z, &s) in level.map.iter().enumerate() {
-        for (x, c) in s.chars().enumerate() {
+    for (z, s) in level.map.iter().enumerate() {
+        for (x, &c) in s.iter().enumerate() {
             if c == '#' {
                 commands.spawn(MaterialMeshBundle {
                     mesh: cube_handle.clone(),

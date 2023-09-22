@@ -5,6 +5,8 @@ use bevy::{
     window::WindowResized,
 };
 
+use super::level::MazeLevel;
+
 pub struct MazeCameraPlugin;
 
 impl Plugin for MazeCameraPlugin {
@@ -20,12 +22,15 @@ struct MainCamera;
 #[derive(Component)]
 struct MiniMapCamera;
 
-fn setup(mut commands: Commands) {
+fn setup(level: Res<MazeLevel>, mut commands: Commands) {
+    let x = level.width as f32 / 2.0;
+    let z = level.height as f32 / 2.0;
+
     // Main camera
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(17.0, 15.0, 30.0)
-                .looking_at(Vec3::new(10.0, 0.0, 10.0), Vec3::Y),
+            transform: Transform::from_xyz(x + 7.0, 15.0, z + 20.0)
+                .looking_at(Vec3::new(x, 0.0, z), Vec3::Y),
             ..default()
         },
         MainCamera,
@@ -34,8 +39,8 @@ fn setup(mut commands: Commands) {
     // MiniMap camera
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(10.0, 30.0, 10.0)
-                .looking_at(Vec3::new(10.0, 0.0, 10.0), -Vec3::Z),
+            transform: Transform::from_xyz(x, 3.0 * x, z)
+                .looking_at(Vec3::new(x, 0.0, z), -Vec3::Z),
             camera: Camera {
                 // Renders the right camera after the left camera, which has a default priority of 0
                 order: 1,
