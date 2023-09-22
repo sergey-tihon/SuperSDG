@@ -36,7 +36,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn create_array_texture(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    maze: Res<MazeLevel>,
+    level: Res<MazeLevel>,
     mut loading_texture: ResMut<LoadingTexture>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut texture_materials: ResMut<Assets<TextureMaterial>>,
@@ -62,7 +62,7 @@ fn create_array_texture(
         texture: loading_texture.floor_handle.clone(),
     });
 
-    for (z, &s) in maze.map.iter().enumerate() {
+    for (z, &s) in level.map.iter().enumerate() {
         for (x, c) in s.chars().enumerate() {
             if c == '#' {
                 commands.spawn(MaterialMeshBundle {

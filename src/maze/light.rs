@@ -43,6 +43,6 @@ fn animate_light_direction(
     mut query: Query<&mut Transform, With<DirectionalLight>>,
 ) {
     for mut transform in &mut query {
-        transform.rotate_y(time.delta_seconds() * 0.01);
+        transform.rotate_y(time.delta_seconds() * 0.001);
     }
 }
