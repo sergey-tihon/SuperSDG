@@ -5,9 +5,9 @@ use bevy::{
     render::render_resource::{AsBindGroup, ShaderRef},
 };
 
-pub struct MazePlugin;
+pub struct MazeRenderPlugin;
 
-impl Plugin for MazePlugin {
+impl Plugin for MazeRenderPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(MaterialPlugin::<TextureMaterial>::default())
             .add_systems(Startup, setup)
@@ -28,40 +28,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         is_loaded: false,
         wall_handle: asset_server.load("textures/wall.png"),
         floor_handle: asset_server.load("textures/floor.png"),
-    });
-
-    // camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(17.0, 15.0, 30.0)
-            .looking_at(Vec3::new(10.0, 0.0, 10.0), Vec3::Y),
-        ..default()
-    });
-
-    // ambient light
-    commands.insert_resource(AmbientLight {
-        color: Color::WHITE,
-        brightness: 0.01,
-    });
-
-    // directional 'sun' light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            shadows_enabled: true,
-            illuminance: 50_000.,
-            color: Color::Rgba {
-                red: 248. / 255.,
-                green: 244. / 255.,
-                blue: 234. / 255.,
-                alpha: 1.0,
-            },
-            ..default()
-        },
-        transform: Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_rotation_x(-std::f32::consts::FRAC_PI_8),
-            ..default()
-        },
-        ..default()
     });
 }
 
