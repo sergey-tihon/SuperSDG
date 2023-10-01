@@ -10,14 +10,19 @@ mod level;
 mod light;
 mod render;
 
-pub struct MazePlugins;
+pub struct MazeGamePlugins;
 
-impl PluginGroup for MazePlugins {
+impl PluginGroup for MazeGamePlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
-        PluginGroupBuilder::start::<Self>()
+        let mut group = PluginGroupBuilder::start::<Self>();
+
+        // Core Game Plugins
+        group = group
             .add(MazeLevelPlugin)
             .add(MazeCameraPlugin)
             .add(MazeLightPlugin)
-            .add(MazeRenderPlugin)
+            .add(MazeRenderPlugin);
+
+        group
     }
 }

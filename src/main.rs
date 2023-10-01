@@ -3,10 +3,10 @@ use std::time::Duration;
 use bevy::asset::ChangeWatcher;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode, WindowResolution, WindowTheme};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 mod demo;
 mod maze;
+mod tools;
 
 fn main() {
     App::new()
@@ -28,9 +28,9 @@ fn main() {
                     watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
                     ..default()
                 }),
-            maze::MazePlugins,
+            maze::MazeGamePlugins,
+            tools::ToolsPlugins,
             //demo::DemoLightPlugin,
-            WorldInspectorPlugin::new(),
             //LogDiagnosticsPlugin::default(),
             //FrameTimeDiagnosticsPlugin,
         ))
