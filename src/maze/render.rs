@@ -39,7 +39,6 @@ fn create_array_texture(
     level: Res<MazeLevel>,
     mut loading_texture: ResMut<LoadingTexture>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut standard_materials: ResMut<Assets<StandardMaterial>>,
     mut texture_materials: ResMut<Assets<TextureMaterial>>,
 ) {
     if loading_texture.is_loaded
@@ -82,36 +81,6 @@ fn create_array_texture(
             }
         }
     }
-
-    // Add Player
-    let start = level.start;
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::UVSphere {
-            radius: 0.5,
-            ..default()
-        })),
-        material: standard_materials.add(StandardMaterial {
-            base_color: Color::RED,
-            ..default()
-        }),
-        transform: Transform::from_xyz(start.0 as f32 + 0.5, 0.5, start.1 as f32 + 0.5),
-        ..default()
-    });
-
-    // Add exit
-    let exit = level.exit;
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::UVSphere {
-            radius: 0.5,
-            ..default()
-        })),
-        material: standard_materials.add(StandardMaterial {
-            base_color: Color::LIME_GREEN,
-            ..default()
-        }),
-        transform: Transform::from_xyz(exit.0 as f32 + 0.5, 0.5, exit.1 as f32 + 0.5),
-        ..default()
-    });
 }
 
 #[derive(AsBindGroup, Debug, Clone, TypeUuid, TypePath)]

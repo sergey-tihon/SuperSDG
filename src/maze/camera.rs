@@ -17,30 +17,33 @@ impl Plugin for MazeCameraPlugin {
 }
 
 #[derive(Component)]
-struct MainCamera;
+pub struct MainCamera;
 
 #[derive(Component)]
-struct MiniMapCamera;
+pub struct MiniMapCamera;
 
 fn setup(level: Res<MazeLevel>, mut commands: Commands) {
-    let x = level.width as f32 / 2.0;
-    let z = level.height as f32 / 2.0;
+    let player_x = level.start.0 as f32 + 0.5;
+    let player_z = level.start.1 as f32 + 0.5;
 
     // Main camera
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(x + 7.0, 15.0, z + 20.0)
-                .looking_at(Vec3::new(x, 0.0, z), Vec3::Y),
+            transform: Transform::from_xyz(player_x, 15.0, player_z + 20.0)
+                .looking_at(Vec3::new(player_x, 0.5, player_z), Vec3::Y),
             ..default()
         },
         MainCamera,
     ));
 
+    let mid_x = level.width as f32 / 2.0;
+    let mid_z = level.height as f32 / 2.0;
+
     // MiniMap camera
     commands.spawn((
         Camera3dBundle {
-            transform: Transform::from_xyz(x, 3.0 * x, z)
-                .looking_at(Vec3::new(x, 0.0, z), -Vec3::Z),
+            transform: Transform::from_xyz(mid_x, 2.5 * mid_x, mid_z)
+                .looking_at(Vec3::new(mid_x, 0.0, mid_z), -Vec3::Z),
             camera: Camera {
                 // Renders the right camera after the left camera, which has a default priority of 0
                 order: 1,
