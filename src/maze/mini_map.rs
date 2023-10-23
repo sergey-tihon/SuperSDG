@@ -30,7 +30,7 @@ fn setup(
     let mid_z = level.height as f32 / 2.0;
 
     let transform = Transform::from_xyz(mid_x, 2.5 * mid_x, mid_z)
-        .looking_at(Vec3::new(mid_x, 0.0, mid_z), -Vec3::X);
+        .looking_at(Vec3::new(mid_x, 0.0, mid_z), -Vec3::Z);
 
     // MiniMap camera
     commands.spawn((

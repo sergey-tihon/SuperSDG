@@ -11,7 +11,7 @@ impl Plugin for MazeCameraPlugin {
         app.insert_resource(CameraSettings {
             height: 15.0,
             radius: 20.0,
-            angle: 2.0 * PI,
+            angle: FRAC_PI_2,
         })
         .add_event::<CameraChangedEvent>()
         .add_systems(Startup, setup)
