@@ -17,9 +17,14 @@ impl Plugin for MiniMapPlugin {
 }
 
 #[derive(Component)]
-pub struct MiniMapCamera;
+struct MiniMapCamera;
 
-fn setup(level: Res<MazeLevel>, mut commands: Commands) {
+fn setup(
+    level: Res<MazeLevel>,
+    mut commands: Commands,
+    windows: Query<(&Window, Entity)>,
+    mut resize_events: EventWriter<WindowResized>,
+) {
     // MiniMap camera position update
     let mid_x = level.width as f32 / 2.0;
     let mid_z = level.height as f32 / 2.0;
@@ -32,7 +37,7 @@ fn setup(level: Res<MazeLevel>, mut commands: Commands) {
         Camera3dBundle {
             transform,
             camera: Camera {
-                // Renders the right camera after the left camera, which has a default priority of 0
+                // Renders the `mini-map` camera after the `main` camera, which has a default priority of 0
                 order: 1,
                 ..default()
             },
@@ -45,6 +50,14 @@ fn setup(level: Res<MazeLevel>, mut commands: Commands) {
         },
         MiniMapCamera,
     ));
+
+    // This is dirty hack to calculate viewport on setup
+    // For some reason we do no receive WindowResized event on startup
+    resize_events.send(WindowResized {
+        window: windows.single().1,
+        width: 0.0,
+        height: 0.0,
+    });
 }
 
 fn set_camera_viewports(

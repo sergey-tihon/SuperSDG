@@ -1,4 +1,4 @@
-use std::f32::consts::PI;
+use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
 
@@ -11,7 +11,7 @@ impl Plugin for MazeCameraPlugin {
         app.insert_resource(CameraSettings {
             height: 15.0,
             radius: 20.0,
-            angle: std::f32::consts::FRAC_PI_2,
+            angle: 2.0 * PI,
         })
         .add_event::<CameraChangedEvent>()
         .add_systems(Startup, setup)
@@ -56,6 +56,7 @@ fn set_camera_viewports(
     // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
     for resize_event in resize_events.iter() {
         let window = windows.get(resize_event.window).unwrap();
+
         let mut main_camera = main_camera.single_mut();
         main_camera.viewport = Some(Viewport {
             physical_position: UVec2::new(0, 0),

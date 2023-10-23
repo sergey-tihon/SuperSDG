@@ -13,6 +13,8 @@ impl Plugin for MazeLightPlugin {
     }
 }
 
+const OUTER_ANGLE: f32 = PI / 8.0;
+
 fn setup(mut commands: Commands) {
     // ambient light
     commands.insert_resource(AmbientLight {
@@ -23,12 +25,12 @@ fn setup(mut commands: Commands) {
     // directional 'sun' light
     commands.spawn(SpotLightBundle {
         spot_light: SpotLight {
-            intensity: 20000.0, // lumens
-            range: 50.0,
+            intensity: 30000.0, // lumens
+            range: 200.0,
             color: Color::WHITE,
             shadows_enabled: true,
-            inner_angle: PI / 8.0 * 0.5,
-            outer_angle: PI / 8.0,
+            inner_angle: OUTER_ANGLE * 0.5,
+            outer_angle: OUTER_ANGLE,
             ..default()
         },
         ..default()
@@ -37,7 +39,7 @@ fn setup(mut commands: Commands) {
 
 fn animate_light_direction(
     mut light_query: Query<&mut Transform, (With<SpotLight>, Without<MainCamera>, Without<Player>)>,
-    camera_query: Query<&Transform, (With<MainCamera>, Without<Player>)>,
+    camera_query: Query<&Transform, (Changed<Transform>, With<MainCamera>, Without<Player>)>,
     player_position: Query<&Transform, With<Player>>,
 ) {
     if let (Ok(mut light), Ok(player), Ok(camera)) = (
@@ -47,7 +49,5 @@ fn animate_light_direction(
     ) {
         (*light) =
             Transform::from_translation(camera.translation).looking_at(player.translation, Vec3::Y);
-        // TODO: do not re-calc on every tick
-        println!("Moved light: {:?}", light.translation);
     }
 }
