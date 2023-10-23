@@ -71,8 +71,8 @@ fn set_camera_viewports(
 
 const HEIGHT_MIN: f32 = 3.0;
 const HEIGHT_MAX: f32 = 30.0;
-const ANGLE_MOVE_SPEED: f32 = 0.5;
-const HEIGHT_MOVE_SPEED: f32 = 10.0;
+const ANGLE_MOVE_SPEED: f32 = 0.8;
+const HEIGHT_MOVE_SPEED: f32 = 15.0;
 
 fn keyboard_input_system(
     time: Res<Time>,

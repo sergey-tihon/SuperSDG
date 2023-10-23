@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::level::MazeLevel;
+use super::{camera::MainCamera, level::MazeLevel};
 
 pub struct PlayerPlugin;
 
@@ -8,12 +8,20 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<PlayerMovedEvent>()
             .add_systems(Startup, setup)
-            .add_systems(Update, keyboard_input_system);
+            .add_systems(Update, (keyboard_input_system, animate_player_movement));
     }
 }
 
+pub struct AnimationState {
+    time: f32,
+    direction_2d: (i32, i32),
+    direction_3d: Vec3,
+}
+
 #[derive(Component)]
-pub struct Player;
+pub struct Player {
+    animation: Option<AnimationState>,
+}
 
 #[derive(Event)]
 pub struct PlayerMovedEvent;
@@ -39,7 +47,7 @@ fn setup(
             transform: Transform::from_xyz(start.0 as f32 + 0.5, 0.5, start.1 as f32 + 0.5),
             ..default()
         },
-        Player,
+        Player { animation: None },
     ));
 
     // Add exit
@@ -58,34 +66,82 @@ fn setup(
     });
 }
 
+const DIRECTIONS_2D: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
+
 fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
-    mut level: ResMut<MazeLevel>,
-    mut player_query: Query<&mut Transform, With<Player>>,
-    mut player_moved_event_writer: EventWriter<PlayerMovedEvent>,
+    mut player_query: Query<&mut Player, (With<Player>, Without<MainCamera>)>,
+    camera_query: Query<&Transform, With<MainCamera>>,
 ) {
     if let Ok(mut player) = player_query.get_single_mut() {
-        let level = level.as_mut();
+        let index_delta: i8 = if keyboard_input.pressed(KeyCode::Up) {
+            0
+        } else if keyboard_input.pressed(KeyCode::Right) {
+            1
+        } else if keyboard_input.pressed(KeyCode::Down) {
+            2
+        } else if keyboard_input.pressed(KeyCode::Left) {
+            3
+        } else {
+            -1
+        };
 
-        if keyboard_input.just_released(KeyCode::Left) {
-            player.translation.x -= 1.0;
-            level.start.0 -= 1;
-            player_moved_event_writer.send(PlayerMovedEvent);
+        if index_delta >= 0 && player.animation.is_none() {
+            let camera = camera_query.get_single().unwrap();
+            let camera_forward = (*camera).forward();
+
+            let mut base_index = 0;
+            let mut base_cosine = f32::MIN;
+            for (index, direction) in DIRECTIONS_2D.iter().enumerate() {
+                let cosine = get_direction_3d(*direction).dot(camera_forward);
+                if cosine > base_cosine {
+                    base_cosine = cosine;
+                    base_index = index;
+                }
+            }
+
+            let index = (base_index + index_delta as usize) % 4;
+            let direction_2d = DIRECTIONS_2D[index];
+            player.animation = Some(AnimationState {
+                time: 0.0,
+                direction_2d,
+                direction_3d: get_direction_3d(direction_2d),
+            });
         }
-        if keyboard_input.just_released(KeyCode::Right) {
-            player.translation.x += 1.0;
-            level.start.0 += 1;
-            player_moved_event_writer.send(PlayerMovedEvent);
-        }
-        if keyboard_input.just_released(KeyCode::Down) {
-            player.translation.z += 1.0;
-            level.start.1 += 1;
-            player_moved_event_writer.send(PlayerMovedEvent);
-        }
-        if keyboard_input.just_released(KeyCode::Up) {
-            player.translation.z -= 1.0;
-            level.start.1 -= 1;
-            player_moved_event_writer.send(PlayerMovedEvent);
+    }
+}
+
+fn get_direction_3d(direction: (i32, i32)) -> Vec3 {
+    Vec3::new(direction.0 as f32, 0.0, direction.1 as f32)
+}
+
+const MOVEMENT_SPEED: f32 = 0.2;
+
+fn animate_player_movement(
+    mut level: ResMut<MazeLevel>,
+    time: Res<Time>,
+    mut player_query: Query<(&mut Transform, &mut Player), Without<MainCamera>>,
+    mut player_moved_event_writer: EventWriter<PlayerMovedEvent>,
+) {
+    if let Ok((mut player_transform, mut player)) = player_query.get_single_mut() {
+        if let Some(animation) = &mut player.animation {
+            let delta = time.delta_seconds() / MOVEMENT_SPEED;
+            animation.time += delta;
+            if animation.time > 1.0 {
+                let level = level.as_mut();
+                level.start.0 = (level.start.0 as i32 + animation.direction_2d.0) as usize;
+                level.start.1 = (level.start.1 as i32 + animation.direction_2d.1) as usize;
+                player_transform.translation = Vec3 {
+                    x: level.start.0 as f32 + 0.5,
+                    y: 0.5,
+                    z: level.start.1 as f32 + 0.5,
+                };
+
+                player.animation = None;
+            } else {
+                player_transform.translation += animation.direction_3d * delta;
+                player_moved_event_writer.send(PlayerMovedEvent);
+            }
         }
     }
 }
