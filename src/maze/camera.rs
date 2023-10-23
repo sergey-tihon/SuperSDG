@@ -112,11 +112,11 @@ fn keyboard_input_system(
 fn update_camera_position(
     camera_settings: Res<CameraSettings>,
     player_position: Query<&Transform, (With<Player>, Without<MainCamera>)>,
-    camera_changed_event_reader: EventReader<CameraChangedEvent>,
-    player_moved_event_reader: EventReader<PlayerMovedEvent>,
+    camera_changed_events: EventReader<CameraChangedEvent>,
+    player_moved_events: EventReader<PlayerMovedEvent>,
     mut main_camera: Query<&mut Transform, With<MainCamera>>,
 ) {
-    if !camera_changed_event_reader.is_empty() || !player_moved_event_reader.is_empty() {
+    if !camera_changed_events.is_empty() || !player_moved_events.is_empty() {
         let player = player_position.single().translation;
         let camera = get_camera_position(player, &camera_settings);
 

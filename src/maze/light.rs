@@ -1,4 +1,8 @@
+use std::f32::consts::PI;
+
 use bevy::prelude::*;
+
+use super::{camera::MainCamera, player::Player};
 
 pub struct MazeLightPlugin;
 
@@ -17,21 +21,14 @@ fn setup(mut commands: Commands) {
     });
 
     // directional 'sun' light
-    commands.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
+    commands.spawn(SpotLightBundle {
+        spot_light: SpotLight {
+            intensity: 20000.0, // lumens
+            range: 50.0,
+            color: Color::WHITE,
             shadows_enabled: true,
-            illuminance: 50_000.,
-            color: Color::Rgba {
-                red: 248. / 255.,
-                green: 244. / 255.,
-                blue: 234. / 255.,
-                alpha: 1.0,
-            },
-            ..default()
-        },
-        transform: Transform {
-            translation: Vec3::new(0.0, 2.0, 0.0),
-            rotation: Quat::from_rotation_x(-std::f32::consts::FRAC_PI_8),
+            inner_angle: PI / 8.0 * 0.5,
+            outer_angle: PI / 8.0,
             ..default()
         },
         ..default()
@@ -39,10 +36,18 @@ fn setup(mut commands: Commands) {
 }
 
 fn animate_light_direction(
-    time: Res<Time>,
-    mut query: Query<&mut Transform, With<DirectionalLight>>,
+    mut light_query: Query<&mut Transform, (With<SpotLight>, Without<MainCamera>, Without<Player>)>,
+    camera_query: Query<&Transform, (With<MainCamera>, Without<Player>)>,
+    player_position: Query<&Transform, With<Player>>,
 ) {
-    for mut transform in &mut query {
-        transform.rotate_y(time.delta_seconds() * 0.001);
+    if let (Ok(mut light), Ok(player), Ok(camera)) = (
+        light_query.get_single_mut(),
+        player_position.get_single(),
+        camera_query.get_single(),
+    ) {
+        (*light) =
+            Transform::from_translation(camera.translation).looking_at(player.translation, Vec3::Y);
+        // TODO: do not re-calc on every tick
+        println!("Moved light: {:?}", light.translation);
     }
 }
