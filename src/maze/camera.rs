@@ -1,11 +1,8 @@
-use std::{cmp, f32::consts::PI};
+use std::f32::consts::PI;
 
-use bevy::{
-    core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::Viewport,
-    window::WindowResized,
-};
+use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
 
-use super::{level::MazeLevel, player::Player, player::PlayerMovedEvent};
+use super::{player::Player, player::PlayerMovedEvent};
 
 pub struct MazeCameraPlugin;
 
@@ -39,9 +36,6 @@ pub struct CameraSettings {
 #[derive(Component)]
 pub struct MainCamera;
 
-#[derive(Component)]
-pub struct MiniMapCamera;
-
 #[derive(Event)]
 pub struct CameraChangedEvent;
 
@@ -50,33 +44,13 @@ pub struct CameraChangedEvent;
 fn setup(mut commands: Commands, mut camera_changed_event_writer: EventWriter<CameraChangedEvent>) {
     // Main camera
     commands.spawn((Camera3dBundle { ..default() }, MainCamera));
-
-    // MiniMap camera
-    commands.spawn((
-        Camera3dBundle {
-            camera: Camera {
-                // Renders the right camera after the left camera, which has a default priority of 0
-                order: 1,
-                ..default()
-            },
-            camera_3d: Camera3d {
-                // don't clear on the second camera because the first camera already cleared the window
-                clear_color: ClearColorConfig::None,
-                ..default()
-            },
-            ..default()
-        },
-        MiniMapCamera,
-    ));
-
     camera_changed_event_writer.send(CameraChangedEvent);
 }
 
 fn set_camera_viewports(
     windows: Query<&Window>,
     mut resize_events: EventReader<WindowResized>,
-    mut main_camera: Query<&mut Camera, (With<MainCamera>, Without<MiniMapCamera>)>,
-    mut mini_camera: Query<&mut Camera, With<MiniMapCamera>>,
+    mut main_camera: Query<&mut Camera, With<MainCamera>>,
 ) {
     // We need to dynamically resize the camera's viewports whenever the window size changes
     // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
@@ -89,19 +63,6 @@ fn set_camera_viewports(
                 window.resolution.physical_width(),
                 window.resolution.physical_height(),
             ),
-            ..default()
-        });
-
-        let mut mini_camera = mini_camera.single_mut();
-        let mini_camera_size = cmp::min(
-            window.resolution.physical_width() / 4,
-            window.resolution.physical_height() / 3,
-        );
-
-        mini_camera.viewport = Some(Viewport {
-            physical_position: UVec2::new(window.resolution.physical_width() - mini_camera_size, 0),
-            physical_size: UVec2::new(mini_camera_size, mini_camera_size),
-
             ..default()
         });
     }
@@ -149,13 +110,11 @@ fn keyboard_input_system(
 }
 
 fn update_camera_position(
-    level: Res<MazeLevel>,
     camera_settings: Res<CameraSettings>,
-    player_position: Query<&Transform, (With<Player>, Without<MainCamera>, Without<MiniMapCamera>)>,
+    player_position: Query<&Transform, (With<Player>, Without<MainCamera>)>,
     camera_changed_event_reader: EventReader<CameraChangedEvent>,
     player_moved_event_reader: EventReader<PlayerMovedEvent>,
-    mut main_camera: Query<&mut Transform, (With<MainCamera>, Without<MiniMapCamera>)>,
-    mut mini_camera: Query<&mut Transform, With<MiniMapCamera>>,
+    mut main_camera: Query<&mut Transform, With<MainCamera>>,
 ) {
     if !camera_changed_event_reader.is_empty() || !player_moved_event_reader.is_empty() {
         let player = player_position.single().translation;
@@ -165,14 +124,6 @@ fn update_camera_position(
         let mut main_camera = main_camera.single_mut();
         *main_camera =
             Transform::from_xyz(camera.x, camera.y, camera.z).looking_at(player, Vec3::Y);
-
-        // MiniMap camera position update
-        let mid_x = level.width as f32 / 2.0;
-        let mid_z = level.height as f32 / 2.0;
-
-        let mut mini_camera = mini_camera.single_mut();
-        *mini_camera = Transform::from_xyz(mid_x, 2.5 * mid_x, mid_z)
-            .looking_at(Vec3::new(mid_x, 0.0, mid_z), -Vec3::X);
     }
 }
 

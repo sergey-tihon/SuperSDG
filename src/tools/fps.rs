@@ -18,5 +18,5 @@ fn tweak_fps(mut text_query: Query<(&mut Text, &mut Style), With<ScreenDiagsText
 
     style.position_type = PositionType::Absolute;
     style.right = Val::Percent(0.0);
-    style.bottom = Val::Percent(0.0);
+    style.bottom = Val::Percent(1.0);
 }

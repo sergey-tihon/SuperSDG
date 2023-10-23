@@ -1,13 +1,14 @@
 use bevy::{app::PluginGroupBuilder, prelude::PluginGroup};
 
 use self::{
-    camera::MazeCameraPlugin, level::MazeLevelPlugin, light::MazeLightPlugin, player::PlayerPlugin,
-    render::MazeRenderPlugin,
+    camera::MazeCameraPlugin, level::MazeLevelPlugin, light::MazeLightPlugin,
+    mini_map::MiniMapPlugin, player::PlayerPlugin, render::MazeRenderPlugin,
 };
 
 mod camera;
 mod level;
 mod light;
+mod mini_map;
 mod player;
 mod render;
 
@@ -22,6 +23,7 @@ impl PluginGroup for MazeGamePlugins {
             .add(MazeLevelPlugin)
             .add(PlayerPlugin)
             .add(MazeCameraPlugin)
+            .add(MiniMapPlugin)
             .add(MazeLightPlugin)
             .add(MazeRenderPlugin);
 
