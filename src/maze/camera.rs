@@ -2,7 +2,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
 
-use super::{player::Player, player::PlayerMovedEvent};
+use super::player::Player;
 
 pub struct MazeCameraPlugin;
 
@@ -13,7 +13,6 @@ impl Plugin for MazeCameraPlugin {
             radius: 20.0,
             angle: FRAC_PI_2,
         })
-        .add_event::<CameraChangedEvent>()
         .add_systems(Startup, setup)
         .add_systems(
             Update,
@@ -36,15 +35,11 @@ pub struct CameraSettings {
 #[derive(Component)]
 pub struct MainCamera;
 
-#[derive(Event)]
-pub struct CameraChangedEvent;
-
 // Setup camera objects but without any exact position
 // Proper position will be calculated by `CameraChangedEvent` handler
-fn setup(mut commands: Commands, mut camera_changed_event_writer: EventWriter<CameraChangedEvent>) {
+fn setup(mut commands: Commands) {
     // Main camera
     commands.spawn((Camera3dBundle { ..default() }, MainCamera));
-    camera_changed_event_writer.send(CameraChangedEvent);
 }
 
 fn set_camera_viewports(
@@ -78,53 +73,47 @@ fn keyboard_input_system(
     time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
     mut camera_settings: ResMut<CameraSettings>,
-    mut camera_changed_event_writer: EventWriter<CameraChangedEvent>,
 ) {
     if keyboard_input.pressed(KeyCode::D) {
         camera_settings.angle -= ANGLE_MOVE_SPEED * time.delta_seconds();
         if camera_settings.angle < 0.0 {
             camera_settings.angle += 2.0 * PI;
         }
-        camera_changed_event_writer.send(CameraChangedEvent);
     }
     if keyboard_input.pressed(KeyCode::A) {
         camera_settings.angle += ANGLE_MOVE_SPEED * time.delta_seconds();
         if camera_settings.angle > 2.0 * PI {
             camera_settings.angle -= 2.0 * PI;
         }
-        camera_changed_event_writer.send(CameraChangedEvent);
     }
     if keyboard_input.pressed(KeyCode::S) {
         camera_settings.height -= HEIGHT_MOVE_SPEED * time.delta_seconds();
         if camera_settings.height < HEIGHT_MIN {
             camera_settings.height = HEIGHT_MIN;
         }
-        camera_changed_event_writer.send(CameraChangedEvent);
     }
     if keyboard_input.pressed(KeyCode::W) {
         camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_seconds();
         if camera_settings.height > HEIGHT_MAX {
             camera_settings.height = HEIGHT_MAX;
         }
-        camera_changed_event_writer.send(CameraChangedEvent);
     }
 }
 
 fn update_camera_position(
     camera_settings: Res<CameraSettings>,
-    player_position: Query<&Transform, (With<Player>, Without<MainCamera>)>,
-    camera_changed_events: EventReader<CameraChangedEvent>,
-    player_moved_events: EventReader<PlayerMovedEvent>,
+    player_position: Query<Ref<Transform>, (With<Player>, Without<MainCamera>)>,
     mut main_camera: Query<&mut Transform, With<MainCamera>>,
 ) {
-    if !camera_changed_events.is_empty() || !player_moved_events.is_empty() {
-        let player = player_position.single().translation;
-        let camera = get_camera_position(player, &camera_settings);
+    if let Ok(player) = player_position.get_single() {
+        if camera_settings.is_changed() || player.is_changed() {
+            let camera = get_camera_position(player.translation, &camera_settings);
 
-        // Main camera position update
-        let mut main_camera = main_camera.single_mut();
-        *main_camera =
-            Transform::from_xyz(camera.x, camera.y, camera.z).looking_at(player, Vec3::Y);
+            // Main camera position update
+            let mut main_camera = main_camera.single_mut();
+            *main_camera = Transform::from_xyz(camera.x, camera.y, camera.z)
+                .looking_at(player.translation, Vec3::Y);
+        }
     }
 }
 

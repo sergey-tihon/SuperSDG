@@ -6,8 +6,7 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<PlayerMovedEvent>()
-            .add_systems(Startup, setup)
+        app.add_systems(Startup, setup)
             .add_systems(Update, (keyboard_input_system, animate_player_movement));
     }
 }
@@ -22,9 +21,6 @@ pub struct AnimationState {
 pub struct Player {
     animation: Option<AnimationState>,
 }
-
-#[derive(Event)]
-pub struct PlayerMovedEvent;
 
 fn setup(
     mut commands: Commands,
@@ -74,39 +70,41 @@ fn keyboard_input_system(
     camera_query: Query<&Transform, With<MainCamera>>,
 ) {
     if let Ok(mut player) = player_query.get_single_mut() {
-        let index_delta: i8 = if keyboard_input.pressed(KeyCode::Up) {
-            0
+        let index_delta = if keyboard_input.pressed(KeyCode::Up) {
+            Some(0)
         } else if keyboard_input.pressed(KeyCode::Right) {
-            1
+            Some(1)
         } else if keyboard_input.pressed(KeyCode::Down) {
-            2
+            Some(2)
         } else if keyboard_input.pressed(KeyCode::Left) {
-            3
+            Some(3)
         } else {
-            -1
+            None
         };
 
-        if index_delta >= 0 && player.animation.is_none() {
-            let camera = camera_query.get_single().unwrap();
-            let camera_forward = (*camera).forward();
+        if let Some(index_delta) = index_delta {
+            if player.animation.is_none() {
+                let camera = camera_query.get_single().unwrap();
+                let camera_forward = (*camera).forward();
 
-            let mut base_index = 0;
-            let mut base_cosine = f32::MIN;
-            for (index, direction) in DIRECTIONS_2D.iter().enumerate() {
-                let cosine = get_direction_3d(*direction).dot(camera_forward);
-                if cosine > base_cosine {
-                    base_cosine = cosine;
-                    base_index = index;
+                let mut base_index = 0;
+                let mut base_cosine = f32::MIN;
+                for (index, direction) in DIRECTIONS_2D.iter().enumerate() {
+                    let cosine = get_direction_3d(*direction).dot(camera_forward);
+                    if cosine > base_cosine {
+                        base_cosine = cosine;
+                        base_index = index;
+                    }
                 }
-            }
 
-            let index = (base_index + index_delta as usize) % 4;
-            let direction_2d = DIRECTIONS_2D[index];
-            player.animation = Some(AnimationState {
-                time: 0.0,
-                direction_2d,
-                direction_3d: get_direction_3d(direction_2d),
-            });
+                let index = (base_index + index_delta as usize) % 4;
+                let direction_2d = DIRECTIONS_2D[index];
+                player.animation = Some(AnimationState {
+                    time: 0.0,
+                    direction_2d,
+                    direction_3d: get_direction_3d(direction_2d),
+                });
+            }
         }
     }
 }
@@ -121,7 +119,6 @@ fn animate_player_movement(
     mut level: ResMut<MazeLevel>,
     time: Res<Time>,
     mut player_query: Query<(&mut Transform, &mut Player), Without<MainCamera>>,
-    mut player_moved_event_writer: EventWriter<PlayerMovedEvent>,
 ) {
     if let Ok((mut player_transform, mut player)) = player_query.get_single_mut() {
         if let Some(animation) = &mut player.animation {
@@ -140,7 +137,6 @@ fn animate_player_movement(
                 player.animation = None;
             } else {
                 player_transform.translation += animation.direction_3d * delta;
-                player_moved_event_writer.send(PlayerMovedEvent);
             }
         }
     }
