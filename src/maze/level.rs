@@ -10,14 +10,14 @@ impl Plugin for MazeLevelPlugin {
         app.insert_resource(MazeLevel::new(20, 20));
     }
 }
-
 #[derive(Resource)]
+
 pub struct MazeLevel {
     pub width: usize,
     pub height: usize,
     pub map: Vec<Vec<char>>,
-    pub start: (usize, usize),
-    pub exit: (usize, usize),
+    pub start: (i32, i32),
+    pub exit: (i32, i32),
 }
 
 impl MazeLevel {
@@ -36,8 +36,8 @@ impl MazeLevel {
         maze.generate_maze(1, 1);
 
         let (start, exit) = maze.random_player_and_exit_positions();
-        maze.start = start;
-        maze.exit = exit;
+        maze.start = (start.0 as i32, start.1 as i32);
+        maze.exit = (exit.0 as i32, exit.1 as i32);
 
         maze
     }

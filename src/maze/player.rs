@@ -113,7 +113,7 @@ fn get_direction_3d(direction: (i32, i32)) -> Vec3 {
     Vec3::new(direction.0 as f32, 0.0, direction.1 as f32)
 }
 
-const MOVEMENT_SPEED: f32 = 0.2;
+const MOVEMENT_TIME: f32 = 0.2;
 
 fn animate_player_movement(
     mut level: ResMut<MazeLevel>,
@@ -122,12 +122,12 @@ fn animate_player_movement(
 ) {
     if let Ok((mut player_transform, mut player)) = player_query.get_single_mut() {
         if let Some(animation) = &mut player.animation {
-            let delta = time.delta_seconds() / MOVEMENT_SPEED;
+            let delta = time.delta_seconds();
             animation.time += delta;
-            if animation.time > 1.0 {
+            if animation.time > MOVEMENT_TIME {
                 let level = level.as_mut();
-                level.start.0 = (level.start.0 as i32 + animation.direction_2d.0) as usize;
-                level.start.1 = (level.start.1 as i32 + animation.direction_2d.1) as usize;
+                level.start.0 += animation.direction_2d.0;
+                level.start.1 += animation.direction_2d.1;
                 player_transform.translation = Vec3 {
                     x: level.start.0 as f32 + 0.5,
                     y: 0.5,
@@ -136,7 +136,7 @@ fn animate_player_movement(
 
                 player.animation = None;
             } else {
-                player_transform.translation += animation.direction_3d * delta;
+                player_transform.translation += animation.direction_3d * delta / MOVEMENT_TIME;
             }
         }
     }
