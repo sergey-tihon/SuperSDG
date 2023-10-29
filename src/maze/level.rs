@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use rand::seq::SliceRandom;
 use std::collections::VecDeque;
 use std::fmt;
+use std::ops::Add;
 
 pub struct MazeLevelPlugin;
 
@@ -10,14 +11,43 @@ impl Plugin for MazeLevelPlugin {
         app.insert_resource(MazeLevel::new(20, 20));
     }
 }
-#[derive(Resource)]
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Vec2i(i32, i32);
+
+const DIRECTIONS_2D: [Vec2i; 4] = [Vec2i(0, -1), Vec2i(1, 0), Vec2i(0, 1), Vec2i(-1, 0)];
+
+impl std::ops::Add<Vec2i> for Vec2i {
+    type Output = Vec2i;
+
+    fn add(self, rhs: Vec2i) -> Self::Output {
+        Vec2i(self.0 + rhs.0, self.1 + rhs.1)
+    }
+}
+
+impl Vec2i {
+    pub fn new(position: (usize, usize)) -> Self {
+        Vec2i(position.0 as i32, position.1 as i32)
+    }
+
+    pub fn get_next(&self, direction_index: usize) -> Vec2i {
+        self.add(DIRECTIONS_2D[direction_index])
+    }
+}
+
+impl From<Vec2i> for Vec3 {
+    fn from(val: Vec2i) -> Self {
+        Vec3::new(val.0 as f32 + 0.5, 0.5, val.1 as f32 + 0.5)
+    }
+}
+
+#[derive(Resource)]
 pub struct MazeLevel {
     pub width: usize,
     pub height: usize,
     pub map: Vec<Vec<char>>,
-    pub start: (i32, i32),
-    pub exit: (i32, i32),
+    pub player_position: Vec2i,
+    pub exit_position: Vec2i,
 }
 
 impl MazeLevel {
@@ -29,15 +59,15 @@ impl MazeLevel {
             width,
             height,
             map: vec![vec!['#'; height]; width],
-            start: (0, 0),
-            exit: (0, 0),
+            player_position: Vec2i(0, 0),
+            exit_position: Vec2i(0, 0),
         };
 
         maze.generate_maze(1, 1);
 
         let (start, exit) = maze.random_player_and_exit_positions();
-        maze.start = (start.0 as i32, start.1 as i32);
-        maze.exit = (exit.0 as i32, exit.1 as i32);
+        maze.player_position = Vec2i::new(start);
+        maze.exit_position = Vec2i::new(exit);
 
         maze
     }
@@ -105,6 +135,16 @@ impl MazeLevel {
         let (exit, _) = bfs(self, start_x, start_y);
 
         ((start_x, start_y), exit)
+    }
+
+    pub fn is_cell_empty(&self, position: Vec2i) -> bool {
+        let x = position.0 as usize;
+        let y = position.1 as usize;
+        0 <= position.0
+            && x < self.width
+            && 0 <= position.1
+            && y < self.height
+            && self.map[y][x] != '#'
     }
 }
 

@@ -29,7 +29,7 @@ fn setup(
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Add Player
-    let start = level.start;
+    let start = level.player_position;
     commands.spawn((
         PbrBundle {
             mesh: meshes.add(Mesh::from(shape::UVSphere {
@@ -40,7 +40,7 @@ fn setup(
                 base_color: Color::RED,
                 ..default()
             }),
-            transform: Transform::from_xyz(start.0 as f32 + 0.5, 0.5, start.1 as f32 + 0.5),
+            transform: Transform::from_translation(start.into()),
             ..default()
         },
         PlayerAnimation(None),
@@ -48,7 +48,7 @@ fn setup(
     ));
 
     // Add exit
-    let exit = level.exit;
+    let exit = level.exit_position;
     commands.spawn(PbrBundle {
         mesh: meshes.add(Mesh::from(shape::UVSphere {
             radius: 0.5,
@@ -58,7 +58,7 @@ fn setup(
             base_color: Color::LIME_GREEN,
             ..default()
         }),
-        transform: Transform::from_xyz(exit.0 as f32 + 0.5, 0.5, exit.1 as f32 + 0.5),
+        transform: Transform::from_translation(exit.into()),
         ..default()
     });
 }
@@ -67,6 +67,7 @@ const DIRECTIONS_2D: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
 
 fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
+    level: Res<MazeLevel>,
     mut player_query: Query<
         (&mut PlayerAnimation, &mut PressedDirectionIndex),
         Without<MainCamera>,
@@ -82,7 +83,8 @@ fn keyboard_input_system(
             let index = (base_index + index_delta as usize) % 4;
             direction_index.0 = Some(index);
 
-            if animation.0.is_none() {
+            let next_position = level.player_position.get_next(index);
+            if animation.0.is_none() && level.is_cell_empty(next_position) {
                 animation.0 = Some(AnimationState {
                     time: 0.0,
                     direction_index: index,
@@ -152,25 +154,19 @@ fn animate_player_movement(
                 player_transform.translation += direction_3d * delta / MOVEMENT_TIME;
             } else {
                 let level = level.as_mut();
+                level.player_position = level.player_position.get_next(animation.direction_index);
+                let next_next_position = level.player_position.get_next(animation.direction_index);
 
-                let direction_2d = DIRECTIONS_2D[animation.direction_index];
-                level.start.0 += direction_2d.0;
-                level.start.1 += direction_2d.1;
-
-                if Some(animation.direction_index) == direction_index.0 {
+                if Some(animation.direction_index) == direction_index.0
+                    && level.is_cell_empty(next_next_position)
+                {
                     // We finished the movement animation, but the player is still pressing the same direction button
                     // so we continue the animation int the same direction for a smooth camera experience
                     player_transform.translation += direction_3d * delta / MOVEMENT_TIME;
-
                     animation.time -= MOVEMENT_TIME;
                 } else {
                     // We finished the movement animation and the player should stay in the middle of target cell
-                    player_transform.translation = Vec3 {
-                        x: level.start.0 as f32 + 0.5,
-                        y: 0.5,
-                        z: level.start.1 as f32 + 0.5,
-                    };
-
+                    player_transform.translation = level.player_position.into();
                     player_animation.0 = None;
                 }
             }
