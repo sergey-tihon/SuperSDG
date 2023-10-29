@@ -15,8 +15,6 @@ impl Plugin for MazeLevelPlugin {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Vec2i(i32, i32);
 
-const DIRECTIONS_2D: [Vec2i; 4] = [Vec2i(0, -1), Vec2i(1, 0), Vec2i(0, 1), Vec2i(-1, 0)];
-
 impl std::ops::Add<Vec2i> for Vec2i {
     type Output = Vec2i;
 
@@ -31,13 +29,41 @@ impl Vec2i {
     }
 
     pub fn get_next(&self, direction_index: usize) -> Vec2i {
-        self.add(DIRECTIONS_2D[direction_index])
+        self.add(Directions::get_2d(direction_index))
     }
 }
 
 impl From<Vec2i> for Vec3 {
     fn from(val: Vec2i) -> Self {
         Vec3::new(val.0 as f32 + 0.5, 0.5, val.1 as f32 + 0.5)
+    }
+}
+
+pub struct Directions;
+
+impl Directions {
+    pub const DIRECTIONS: [Vec2i; 4] = [Vec2i(0, -1), Vec2i(1, 0), Vec2i(0, 1), Vec2i(-1, 0)];
+
+    pub fn get_2d(direction_index: usize) -> Vec2i {
+        Self::DIRECTIONS[direction_index]
+    }
+
+    pub fn get_3d(direction_index: usize) -> Vec3 {
+        let dir = Self::get_2d(direction_index);
+        Vec3::new(dir.0 as f32, 0.0, dir.1 as f32)
+    }
+
+    pub fn get_closest(camera_forward: Vec3) -> usize {
+        let mut base_index = 0;
+        let mut base_cosine = f32::MIN;
+        for index in 0..Directions::DIRECTIONS.len() {
+            let cosine = Directions::get_3d(index).dot(camera_forward);
+            if cosine > base_cosine {
+                base_cosine = cosine;
+                base_index = index;
+            }
+        }
+        base_index
     }
 }
 

@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use super::{camera::MainCamera, level::MazeLevel};
+use super::{
+    camera::MainCamera,
+    level::{Directions, MazeLevel},
+};
 
 pub struct PlayerPlugin;
 
@@ -63,8 +66,6 @@ fn setup(
     });
 }
 
-const DIRECTIONS_2D: [(i32, i32); 4] = [(0, -1), (1, 0), (0, 1), (-1, 0)];
-
 fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
     level: Res<MazeLevel>,
@@ -79,8 +80,8 @@ fn keyboard_input_system(
             let camera = camera_query.get_single().unwrap();
             let camera_forward = (*camera).forward();
 
-            let base_index = get_direction_index(camera_forward);
-            let index = (base_index + index_delta as usize) % 4;
+            let up_direction_index = Directions::get_closest(camera_forward);
+            let index = (up_direction_index + index_delta as usize) % 4;
             direction_index.0 = Some(index);
 
             let next_position = level.player_position.get_next(index);
@@ -96,19 +97,6 @@ fn keyboard_input_system(
     }
 }
 
-fn get_direction_index(camera_forward: Vec3) -> usize {
-    let mut base_index = 0;
-    let mut base_cosine = f32::MIN;
-    for (index, direction) in DIRECTIONS_2D.iter().enumerate() {
-        let cosine = get_direction_3d(*direction).dot(camera_forward);
-        if cosine > base_cosine {
-            base_cosine = cosine;
-            base_index = index;
-        }
-    }
-    base_index
-}
-
 fn get_pressed_index_delta(keyboard_input: Res<'_, Input<KeyCode>>) -> Option<i32> {
     if keyboard_input.pressed(KeyCode::Up) {
         Some(0)
@@ -121,10 +109,6 @@ fn get_pressed_index_delta(keyboard_input: Res<'_, Input<KeyCode>>) -> Option<i3
     } else {
         None
     }
-}
-
-fn get_direction_3d(direction: (i32, i32)) -> Vec3 {
-    Vec3::new(direction.0 as f32, 0.0, direction.1 as f32)
 }
 
 const MOVEMENT_TIME: f32 = 0.2;
@@ -148,7 +132,7 @@ fn animate_player_movement(
             let delta = time.delta_seconds();
             animation.time += delta;
 
-            let direction_3d = get_direction_3d(DIRECTIONS_2D[animation.direction_index]);
+            let direction_3d = Directions::get_3d(animation.direction_index);
             if animation.time < MOVEMENT_TIME {
                 // We are still in the middle of the movement animation
                 player_transform.translation += direction_3d * delta / MOVEMENT_TIME;
