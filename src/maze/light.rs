@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use bevy::prelude::*;
 
-use super::{camera::MainCamera, player::Player};
+use super::{camera::MainCamera, player::PlayerAnimation};
 
 pub struct MazeLightPlugin;
 
@@ -38,9 +38,23 @@ fn setup(mut commands: Commands) {
 }
 
 fn animate_light_direction(
-    mut light_query: Query<&mut Transform, (With<SpotLight>, Without<MainCamera>, Without<Player>)>,
-    camera_query: Query<&Transform, (Changed<Transform>, With<MainCamera>, Without<Player>)>,
-    player_position: Query<&Transform, With<Player>>,
+    mut light_query: Query<
+        &mut Transform,
+        (
+            With<SpotLight>,
+            Without<MainCamera>,
+            Without<PlayerAnimation>,
+        ),
+    >,
+    camera_query: Query<
+        &Transform,
+        (
+            Changed<Transform>,
+            With<MainCamera>,
+            Without<PlayerAnimation>,
+        ),
+    >,
+    player_position: Query<&Transform, With<PlayerAnimation>>,
 ) {
     if let (Ok(mut light), Ok(player), Ok(camera)) = (
         light_query.get_single_mut(),

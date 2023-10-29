@@ -2,7 +2,7 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
 
-use super::player::Player;
+use super::player::PlayerAnimation;
 
 pub struct MazeCameraPlugin;
 
@@ -102,7 +102,7 @@ fn keyboard_input_system(
 
 fn update_camera_position(
     camera_settings: Res<CameraSettings>,
-    player_position: Query<Ref<Transform>, (With<Player>, Without<MainCamera>)>,
+    player_position: Query<Ref<Transform>, (With<PlayerAnimation>, Without<MainCamera>)>,
     mut main_camera: Query<&mut Transform, With<MainCamera>>,
 ) {
     if let Ok(player) = player_position.get_single() {
