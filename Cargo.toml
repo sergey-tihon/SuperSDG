@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bevy = { version = "0.11.3", features = ["dynamic_linking"] }
+bevy = { version = "0.12.0", features = ["dynamic_linking"] }
 rand = { version = "0.8.5" }
 bevy-inspector-egui = "0.20.0"
 bevy_screen_diags = "0.6.0"

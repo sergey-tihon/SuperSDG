@@ -1,7 +1,7 @@
 use bevy::{
     asset::LoadState,
     prelude::*,
-    reflect::{TypePath, TypeUuid},
+    reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef},
 };
 
@@ -42,15 +42,15 @@ fn create_array_texture(
     mut texture_materials: ResMut<Assets<TextureMaterial>>,
 ) {
     if loading_texture.is_loaded
-        || asset_server.get_load_state(loading_texture.wall_handle.clone()) != LoadState::Loaded
-        || asset_server.get_load_state(loading_texture.floor_handle.clone()) != LoadState::Loaded
+        || asset_server.load_state(loading_texture.wall_handle.clone()) != LoadState::Loaded
+        || asset_server.load_state(loading_texture.floor_handle.clone()) != LoadState::Loaded
     {
         return;
     }
     loading_texture.is_loaded = true;
 
     let cube_handle = meshes.add(Mesh::from(shape::Cube { size: 1.0 }));
-    let wall_material_handle = texture_materials.add(TextureMaterial {
+    let wall_material = texture_materials.add(TextureMaterial {
         texture: loading_texture.wall_handle.clone(),
     });
 
@@ -58,7 +58,7 @@ fn create_array_texture(
         size: 1.0,
         subdivisions: 0,
     }));
-    let floor_material_handle = texture_materials.add(TextureMaterial {
+    let floor_material = texture_materials.add(TextureMaterial {
         texture: loading_texture.floor_handle.clone(),
     });
 
@@ -67,14 +67,14 @@ fn create_array_texture(
             if c == '#' {
                 commands.spawn(MaterialMeshBundle {
                     mesh: cube_handle.clone(),
-                    material: wall_material_handle.clone(),
+                    material: wall_material.clone(),
                     transform: Transform::from_xyz(x as f32 + 0.5, 0.5, z as f32 + 0.5),
                     ..default()
                 });
             } else {
                 commands.spawn(MaterialMeshBundle {
                     mesh: plane_handle.clone(),
-                    material: floor_material_handle.clone(),
+                    material: floor_material.clone(),
                     transform: Transform::from_xyz(x as f32 + 0.5, 0.0, z as f32 + 0.5),
                     ..default()
                 });
@@ -83,8 +83,7 @@ fn create_array_texture(
     }
 }
 
-#[derive(AsBindGroup, Debug, Clone, TypeUuid, TypePath)]
-#[uuid = "9c5a0ddf-1eaf-41b4-9832-ed736fd26af3"]
+#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 struct TextureMaterial {
     #[texture(0, dimension = "2d")]
     #[sampler(1)]
