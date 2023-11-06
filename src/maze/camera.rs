@@ -74,25 +74,25 @@ fn keyboard_input_system(
     keyboard_input: Res<Input<KeyCode>>,
     mut camera_settings: ResMut<CameraSettings>,
 ) {
-    if keyboard_input.pressed(KeyCode::D) {
+    if keyboard_input.pressed(KeyCode::F) {
         camera_settings.angle -= ANGLE_MOVE_SPEED * time.delta_seconds();
         if camera_settings.angle < 0.0 {
             camera_settings.angle += 2.0 * PI;
         }
     }
-    if keyboard_input.pressed(KeyCode::A) {
+    if keyboard_input.pressed(KeyCode::S) {
         camera_settings.angle += ANGLE_MOVE_SPEED * time.delta_seconds();
         if camera_settings.angle > 2.0 * PI {
             camera_settings.angle -= 2.0 * PI;
         }
     }
-    if keyboard_input.pressed(KeyCode::S) {
+    if keyboard_input.pressed(KeyCode::D) {
         camera_settings.height -= HEIGHT_MOVE_SPEED * time.delta_seconds();
         if camera_settings.height < HEIGHT_MIN {
             camera_settings.height = HEIGHT_MIN;
         }
     }
-    if keyboard_input.pressed(KeyCode::W) {
+    if keyboard_input.pressed(KeyCode::E) {
         camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_seconds();
         if camera_settings.height > HEIGHT_MAX {
             camera_settings.height = HEIGHT_MAX;
