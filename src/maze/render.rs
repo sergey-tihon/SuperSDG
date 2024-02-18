@@ -49,15 +49,14 @@ fn create_array_texture(
     }
     loading_texture.is_loaded = true;
 
-    let cube_handle = meshes.add(Mesh::from(shape::Cube { size: 1.0 }));
+    let cube_handle = meshes.add(Cuboid {
+        half_size: Vec3::splat(0.5),
+    });
     let wall_material = texture_materials.add(TextureMaterial {
         texture: loading_texture.wall_handle.clone(),
     });
 
-    let plane_handle = meshes.add(Mesh::from(shape::Plane {
-        size: 1.0,
-        subdivisions: 0,
-    }));
+    let plane_handle = meshes.add(Plane3d::default().mesh().size(1.0, 1.0));
     let floor_material = texture_materials.add(TextureMaterial {
         texture: loading_texture.floor_handle.clone(),
     });

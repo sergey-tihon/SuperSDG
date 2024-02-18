@@ -1,9 +1,6 @@
 use std::cmp;
 
-use bevy::{
-    core_pipeline::clear_color::ClearColorConfig, prelude::*, render::camera::Viewport,
-    window::WindowResized,
-};
+use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
 
 use super::level::MazeLevel;
 
@@ -39,9 +36,6 @@ fn setup(
             camera: Camera {
                 // Renders the `mini-map` camera after the `main` camera, which has a default priority of 0
                 order: 1,
-                ..default()
-            },
-            camera_3d: Camera3d {
                 // don't clear on the second camera because the first camera already cleared the window
                 clear_color: ClearColorConfig::None,
                 ..default()
@@ -67,7 +61,7 @@ fn set_camera_viewports(
 ) {
     // We need to dynamically resize the camera's viewports whenever the window size changes
     // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
-    for resize_event in resize_events.iter() {
+    for resize_event in resize_events.read() {
         let window = windows.get(resize_event.window).unwrap();
 
         let mut mini_camera = mini_camera.single_mut();

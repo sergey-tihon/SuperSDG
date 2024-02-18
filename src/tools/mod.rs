@@ -1,5 +1,4 @@
 use bevy::{app::PluginGroupBuilder, prelude::PluginGroup};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 //mod fps;
 

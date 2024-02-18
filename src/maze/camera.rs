@@ -49,7 +49,7 @@ fn set_camera_viewports(
 ) {
     // We need to dynamically resize the camera's viewports whenever the window size changes
     // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
-    for resize_event in resize_events.iter() {
+    for resize_event in resize_events.read() {
         let window = windows.get(resize_event.window).unwrap();
 
         let mut main_camera = main_camera.single_mut();
@@ -71,28 +71,28 @@ const HEIGHT_MOVE_SPEED: f32 = 15.0;
 
 fn keyboard_input_system(
     time: Res<Time>,
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     mut camera_settings: ResMut<CameraSettings>,
 ) {
-    if keyboard_input.pressed(KeyCode::F) {
+    if keyboard_input.pressed(KeyCode::KeyF) {
         camera_settings.angle -= ANGLE_MOVE_SPEED * time.delta_seconds();
         if camera_settings.angle < 0.0 {
             camera_settings.angle += 2.0 * PI;
         }
     }
-    if keyboard_input.pressed(KeyCode::S) {
+    if keyboard_input.pressed(KeyCode::KeyS) {
         camera_settings.angle += ANGLE_MOVE_SPEED * time.delta_seconds();
         if camera_settings.angle > 2.0 * PI {
             camera_settings.angle -= 2.0 * PI;
         }
     }
-    if keyboard_input.pressed(KeyCode::D) {
+    if keyboard_input.pressed(KeyCode::KeyD) {
         camera_settings.height -= HEIGHT_MOVE_SPEED * time.delta_seconds();
         if camera_settings.height < HEIGHT_MIN {
             camera_settings.height = HEIGHT_MIN;
         }
     }
-    if keyboard_input.pressed(KeyCode::E) {
+    if keyboard_input.pressed(KeyCode::KeyE) {
         camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_seconds();
         if camera_settings.height > HEIGHT_MAX {
             camera_settings.height = HEIGHT_MAX;

@@ -13,7 +13,7 @@ impl Plugin for MazeLightPlugin {
     }
 }
 
-const OUTER_ANGLE: f32 = PI / 8.0;
+const INNER_ANGLE: f32 = PI / 12.0;
 
 fn setup(mut commands: Commands) {
     // ambient light
@@ -25,12 +25,12 @@ fn setup(mut commands: Commands) {
     // directional 'sun' light
     commands.spawn(SpotLightBundle {
         spot_light: SpotLight {
-            intensity: 25000.0, // lumens
-            range: 200.0,
+            intensity: 3_500_000.0, // lumens
+            range: 300.0,
             color: Color::WHITE,
             shadows_enabled: true,
-            inner_angle: OUTER_ANGLE * 0.1,
-            outer_angle: OUTER_ANGLE,
+            inner_angle: INNER_ANGLE,
+            outer_angle: INNER_ANGLE * 1.5,
             ..default()
         },
         ..default()
