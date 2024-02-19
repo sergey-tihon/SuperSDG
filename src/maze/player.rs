@@ -35,10 +35,10 @@ fn setup(
     let start = level.player_position;
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::UVSphere {
+            mesh: meshes.add(Sphere {
                 radius: 0.5,
                 ..default()
-            })),
+            }),
             material: standard_materials.add(StandardMaterial {
                 base_color: Color::RED,
                 ..default()
@@ -53,10 +53,10 @@ fn setup(
     // Add exit
     let exit = level.exit_position;
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Mesh::from(shape::UVSphere {
+        mesh: meshes.add(Sphere {
             radius: 0.5,
             ..default()
-        })),
+        }),
         material: standard_materials.add(StandardMaterial {
             base_color: Color::LIME_GREEN,
             ..default()
@@ -67,7 +67,7 @@ fn setup(
 }
 
 fn keyboard_input_system(
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     level: Res<MazeLevel>,
     mut player_query: Query<
         (&mut PlayerAnimation, &mut PressedDirectionIndex),
@@ -80,7 +80,7 @@ fn keyboard_input_system(
             let camera = camera_query.get_single().unwrap();
             let camera_forward = (*camera).forward();
 
-            let up_direction_index = Directions::get_closest(camera_forward);
+            let up_direction_index = Directions::get_closest(camera_forward.into());
             let index = (up_direction_index + index_delta as usize) % 4;
             direction_index.0 = Some(index);
 
@@ -97,14 +97,14 @@ fn keyboard_input_system(
     }
 }
 
-fn get_pressed_index_delta(keyboard_input: Res<'_, Input<KeyCode>>) -> Option<i32> {
-    if keyboard_input.pressed(KeyCode::Up) {
+fn get_pressed_index_delta(keyboard_input: Res<'_, ButtonInput<KeyCode>>) -> Option<i32> {
+    if keyboard_input.pressed(KeyCode::ArrowUp) {
         Some(0)
-    } else if keyboard_input.pressed(KeyCode::Right) {
+    } else if keyboard_input.pressed(KeyCode::ArrowRight) {
         Some(1)
-    } else if keyboard_input.pressed(KeyCode::Down) {
+    } else if keyboard_input.pressed(KeyCode::ArrowDown) {
         Some(2)
-    } else if keyboard_input.pressed(KeyCode::Left) {
+    } else if keyboard_input.pressed(KeyCode::ArrowLeft) {
         Some(3)
     } else {
         None

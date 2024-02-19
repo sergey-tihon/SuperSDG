@@ -1,6 +1,3 @@
-use std::time::Duration;
-
-use bevy::asset::ChangeWatcher;
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode, WindowResolution, WindowTheme};
 
@@ -24,10 +21,7 @@ fn main() {
                     }),
                     ..default()
                 })
-                .set(AssetPlugin {
-                    watch_for_changes: ChangeWatcher::with_delay(Duration::from_millis(200)),
-                    ..default()
-                }),
+                .set(AssetPlugin { ..default() }),
             maze::MazeGamePlugins,
             tools::ToolsPlugins,
             //demo::DemoLightPlugin,
