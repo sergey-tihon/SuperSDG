@@ -1,5 +1,5 @@
 use bevy::{app::PluginGroupBuilder, prelude::PluginGroup};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_editor_pls::EditorPlugin;
 
 pub struct ToolsPlugins;
 
@@ -13,7 +13,7 @@ impl PluginGroup for ToolsPlugins {
         #[cfg(debug_assertions)]
         {
             // Plugins for debugging and development
-            group = group.add(WorldInspectorPlugin::new());
+            group = group.add(EditorPlugin::default());
         }
 
         group

@@ -35,10 +35,7 @@ fn setup(
     let start = level.player_position;
     commands.spawn((
         PbrBundle {
-            mesh: meshes.add(Sphere {
-                radius: 0.5,
-                ..default()
-            }),
+            mesh: meshes.add(Sphere { radius: 0.5 }),
             material: standard_materials.add(StandardMaterial {
                 base_color: Color::RED,
                 ..default()
@@ -53,10 +50,7 @@ fn setup(
     // Add exit
     let exit = level.exit_position;
     commands.spawn(PbrBundle {
-        mesh: meshes.add(Sphere {
-            radius: 0.5,
-            ..default()
-        }),
+        mesh: meshes.add(Sphere { radius: 0.5 }),
         material: standard_materials.add(StandardMaterial {
             base_color: Color::LIME_GREEN,
             ..default()
@@ -98,14 +92,18 @@ fn keyboard_input_system(
 }
 
 fn get_pressed_index_delta(keyboard_input: Res<'_, ButtonInput<KeyCode>>) -> Option<i32> {
-    if keyboard_input.pressed(KeyCode::ArrowUp) {
-        Some(0)
-    } else if keyboard_input.pressed(KeyCode::ArrowRight) {
-        Some(1)
-    } else if keyboard_input.pressed(KeyCode::ArrowDown) {
-        Some(2)
-    } else if keyboard_input.pressed(KeyCode::ArrowLeft) {
-        Some(3)
+    if !keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
+        if keyboard_input.pressed(KeyCode::ArrowUp) {
+            Some(0)
+        } else if keyboard_input.pressed(KeyCode::ArrowRight) {
+            Some(1)
+        } else if keyboard_input.pressed(KeyCode::ArrowDown) {
+            Some(2)
+        } else if keyboard_input.pressed(KeyCode::ArrowLeft) {
+            Some(3)
+        } else {
+            None
+        }
     } else {
         None
     }

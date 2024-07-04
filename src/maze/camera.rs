@@ -74,28 +74,30 @@ fn keyboard_input_system(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut camera_settings: ResMut<CameraSettings>,
 ) {
-    if keyboard_input.pressed(KeyCode::KeyF) {
-        camera_settings.angle -= ANGLE_MOVE_SPEED * time.delta_seconds();
-        if camera_settings.angle < 0.0 {
-            camera_settings.angle += 2.0 * PI;
+    if keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
+        if keyboard_input.pressed(KeyCode::ArrowLeft) {
+            camera_settings.angle -= ANGLE_MOVE_SPEED * time.delta_seconds();
+            if camera_settings.angle < 0.0 {
+                camera_settings.angle += 2.0 * PI;
+            }
         }
-    }
-    if keyboard_input.pressed(KeyCode::KeyS) {
-        camera_settings.angle += ANGLE_MOVE_SPEED * time.delta_seconds();
-        if camera_settings.angle > 2.0 * PI {
-            camera_settings.angle -= 2.0 * PI;
+        if keyboard_input.pressed(KeyCode::ArrowRight) {
+            camera_settings.angle += ANGLE_MOVE_SPEED * time.delta_seconds();
+            if camera_settings.angle > 2.0 * PI {
+                camera_settings.angle -= 2.0 * PI;
+            }
         }
-    }
-    if keyboard_input.pressed(KeyCode::KeyD) {
-        camera_settings.height -= HEIGHT_MOVE_SPEED * time.delta_seconds();
-        if camera_settings.height < HEIGHT_MIN {
-            camera_settings.height = HEIGHT_MIN;
+        if keyboard_input.pressed(KeyCode::ArrowDown) {
+            camera_settings.height -= HEIGHT_MOVE_SPEED * time.delta_seconds();
+            if camera_settings.height < HEIGHT_MIN {
+                camera_settings.height = HEIGHT_MIN;
+            }
         }
-    }
-    if keyboard_input.pressed(KeyCode::KeyE) {
-        camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_seconds();
-        if camera_settings.height > HEIGHT_MAX {
-            camera_settings.height = HEIGHT_MAX;
+        if keyboard_input.pressed(KeyCode::ArrowUp) {
+            camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_seconds();
+            if camera_settings.height > HEIGHT_MAX {
+                camera_settings.height = HEIGHT_MAX;
+            }
         }
     }
 }
