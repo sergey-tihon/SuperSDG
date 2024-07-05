@@ -37,23 +37,20 @@ fn setup(mut commands: Commands) {
     });
 }
 
+type LightQueryFilter = (
+    With<SpotLight>,
+    Without<MainCamera>,
+    Without<PlayerAnimation>,
+);
+type CameraQueryFilter = (
+    Changed<Transform>,
+    With<MainCamera>,
+    Without<PlayerAnimation>,
+);
+
 fn animate_light_direction(
-    mut light_query: Query<
-        &mut Transform,
-        (
-            With<SpotLight>,
-            Without<MainCamera>,
-            Without<PlayerAnimation>,
-        ),
-    >,
-    camera_query: Query<
-        &Transform,
-        (
-            Changed<Transform>,
-            With<MainCamera>,
-            Without<PlayerAnimation>,
-        ),
-    >,
+    mut light_query: Query<&mut Transform, LightQueryFilter>,
+    camera_query: Query<&Transform, CameraQueryFilter>,
     player_position: Query<&Transform, With<PlayerAnimation>>,
 ) {
     if let (Ok(mut light), Ok(player), Ok(camera)) = (
