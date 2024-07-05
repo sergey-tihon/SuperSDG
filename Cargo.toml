@@ -7,7 +7,6 @@ edition = "2021"
 bevy = { version = "0.13.2", features = ["dynamic_linking"] }
 rand = { version = "0.8.5" }
 bevy_editor_pls = "0.8.1"
-bevy-fps-counter = "0.4.0"
 
 # Enable only a small amount of optimization in debug mode
 [profile.dev]

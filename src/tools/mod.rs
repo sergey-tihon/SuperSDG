@@ -1,4 +1,8 @@
-use bevy::{app::PluginGroupBuilder, prelude::PluginGroup};
+use bevy::{
+    app::PluginGroupBuilder,
+    diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
+    prelude::PluginGroup,
+};
 use bevy_editor_pls::EditorPlugin;
 
 pub struct ToolsPlugins;
@@ -8,12 +12,14 @@ impl PluginGroup for ToolsPlugins {
         let mut group = PluginGroupBuilder::start::<Self>();
 
         // Extra tools
-        group = group.add(bevy_fps_counter::FpsCounterPlugin);
 
         #[cfg(debug_assertions)]
         {
             // Plugins for debugging and development
-            group = group.add(EditorPlugin::default());
+            group = group
+                .add(EditorPlugin::default())
+                .add(FrameTimeDiagnosticsPlugin)
+                .add(EntityCountDiagnosticsPlugin);
         }
 
         group
