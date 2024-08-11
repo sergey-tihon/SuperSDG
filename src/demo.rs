@@ -4,6 +4,7 @@
 use std::f32::consts::PI;
 
 use bevy::{
+    color::palettes::css::{BLUE, GREEN, INDIGO, LIMEGREEN, ORANGE_RED, PINK, RED},
     pbr::{light_consts, CascadeShadowConfigBuilder},
     prelude::*,
     render::camera::{Exposure, PhysicalCameraParameters},
@@ -17,6 +18,7 @@ impl Plugin for DemoLightPlugin {
             aperture_f_stops: 1.0,
             shutter_speed_s: 1.0 / 100.0,
             sensitivity_iso: 100.0,
+            ..default()
         }))
         .add_systems(Startup, setup)
         .add_systems(Update, (update_exposure, movement, animate_light_direction));
@@ -55,7 +57,7 @@ fn setup(
         mesh: meshes.add(Cuboid::new(5.0, 0.15, 5.0)),
         transform,
         material: materials.add(StandardMaterial {
-            base_color: Color::INDIGO,
+            base_color: INDIGO.into(),
             perceptual_roughness: 1.0,
             ..default()
         }),
@@ -68,7 +70,7 @@ fn setup(
         mesh: meshes.add(Cuboid::new(5.0, 0.15, 5.0)),
         transform,
         material: materials.add(StandardMaterial {
-            base_color: Color::INDIGO,
+            base_color: INDIGO.into(),
             perceptual_roughness: 1.0,
             ..default()
         }),
@@ -99,7 +101,7 @@ fn setup(
         PbrBundle {
             mesh: meshes.add(Cuboid::default()),
             material: materials.add(StandardMaterial {
-                base_color: Color::PINK,
+                base_color: PINK.into(),
                 ..default()
             }),
             transform: Transform::from_xyz(0.0, 0.5, 0.0),
@@ -112,7 +114,7 @@ fn setup(
         PbrBundle {
             mesh: meshes.add(Sphere::new(0.5).mesh().uv(32, 18)),
             material: materials.add(StandardMaterial {
-                base_color: Color::LIME_GREEN,
+                base_color: LIMEGREEN.into(),
                 ..default()
             }),
             transform: Transform::from_xyz(1.5, 1.0, 1.5),
@@ -123,7 +125,7 @@ fn setup(
 
     // ambient light
     commands.insert_resource(AmbientLight {
-        color: Color::ORANGE_RED,
+        color: ORANGE_RED.into(),
         brightness: 0.02,
     });
 
@@ -134,7 +136,7 @@ fn setup(
             transform: Transform::from_xyz(1.0, 2.0, 0.0),
             point_light: PointLight {
                 intensity: 4000.0, // lumens - roughly a 300W non-halogen incandescent bulb
-                color: Color::RED,
+                color: RED.into(),
                 shadows_enabled: true,
                 ..default()
             },
@@ -144,8 +146,8 @@ fn setup(
             builder.spawn(PbrBundle {
                 mesh: meshes.add(Sphere::new(0.1).mesh().uv(32, 18)),
                 material: materials.add(StandardMaterial {
-                    base_color: Color::RED,
-                    emissive: Color::rgba_linear(7.13, 0.0, 0.0, 0.0),
+                    base_color: RED.into(),
+                    emissive: Color::linear_rgb(7.13, 0.0, 0.0).into(),
                     ..default()
                 }),
                 ..default()
@@ -159,7 +161,7 @@ fn setup(
                 .looking_at(Vec3::new(-1.0, 0.0, 0.0), Vec3::Z),
             spot_light: SpotLight {
                 intensity: 4000.0, // lumens - roughly a 300W non-halogen incandescent bulb
-                color: Color::GREEN,
+                color: GREEN.into(),
                 shadows_enabled: true,
                 inner_angle: 0.6,
                 outer_angle: 0.8,
@@ -172,8 +174,8 @@ fn setup(
                 transform: Transform::from_rotation(Quat::from_rotation_x(PI / 2.0)),
                 mesh: meshes.add(Capsule3d::new(0.1, 0.125)),
                 material: materials.add(StandardMaterial {
-                    base_color: Color::GREEN,
-                    emissive: Color::rgba_linear(0.0, 7.13, 0.0, 0.0),
+                    base_color: GREEN.into(),
+                    emissive: Color::linear_rgb(0.0, 7.13, 0.0).into(),
                     ..default()
                 }),
                 ..default()
@@ -187,7 +189,7 @@ fn setup(
             transform: Transform::from_xyz(0.0, 4.0, 0.0),
             point_light: PointLight {
                 intensity: 4000.0, // lumens - roughly a 300W non-halogen incandescent bulb
-                color: Color::BLUE,
+                color: BLUE.into(),
                 shadows_enabled: true,
                 ..default()
             },
@@ -197,8 +199,8 @@ fn setup(
             builder.spawn(PbrBundle {
                 mesh: meshes.add(Sphere::new(0.1).mesh().uv(32, 18)),
                 material: materials.add(StandardMaterial {
-                    base_color: Color::BLUE,
-                    emissive: Color::rgba_linear(0.0, 0.0, 7.13, 0.0),
+                    base_color: BLUE.into(),
+                    emissive: Color::linear_rgb(0.0, 0.0, 7.13).into(),
                     ..default()
                 }),
                 ..default()

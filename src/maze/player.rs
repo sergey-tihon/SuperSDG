@@ -1,4 +1,7 @@
-use bevy::prelude::*;
+use bevy::{
+    color::palettes::css::{LIMEGREEN, RED},
+    prelude::*,
+};
 
 use super::{
     camera::MainCamera,
@@ -37,7 +40,7 @@ fn setup(
         PbrBundle {
             mesh: meshes.add(Sphere { radius: 0.5 }),
             material: standard_materials.add(StandardMaterial {
-                base_color: Color::RED,
+                base_color: RED.into(),
                 ..default()
             }),
             transform: Transform::from_translation(start.into()),
@@ -52,7 +55,7 @@ fn setup(
     commands.spawn(PbrBundle {
         mesh: meshes.add(Sphere { radius: 0.5 }),
         material: standard_materials.add(StandardMaterial {
-            base_color: Color::LIME_GREEN,
+            base_color: LIMEGREEN.into(),
             ..default()
         }),
         transform: Transform::from_translation(exit.into()),

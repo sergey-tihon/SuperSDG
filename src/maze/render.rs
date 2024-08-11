@@ -42,8 +42,8 @@ fn create_array_texture(
     mut texture_materials: ResMut<Assets<TextureMaterial>>,
 ) {
     if loading_texture.is_loaded
-        || asset_server.load_state(loading_texture.wall_handle.clone()) != LoadState::Loaded
-        || asset_server.load_state(loading_texture.floor_handle.clone()) != LoadState::Loaded
+        || asset_server.load_state(loading_texture.wall_handle.id()) != LoadState::Loaded
+        || asset_server.load_state(loading_texture.floor_handle.id()) != LoadState::Loaded
     {
         return;
     }

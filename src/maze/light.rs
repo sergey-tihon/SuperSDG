@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use bevy::prelude::*;
+use bevy::{color::palettes::css::ORANGE_RED, prelude::*};
 
 use super::{camera::MainCamera, player::PlayerAnimation};
 
@@ -18,7 +18,7 @@ const INNER_ANGLE: f32 = PI / 12.0;
 fn setup(mut commands: Commands) {
     // ambient light
     commands.insert_resource(AmbientLight {
-        color: Color::ORANGE_RED,
+        color: ORANGE_RED.into(),
         brightness: 0.02,
     });
 
