@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode, WindowResolution, WindowTheme};
 
-mod demo;
 mod maze;
 mod tools;
 
@@ -25,9 +24,6 @@ fn main() {
                 .set(AssetPlugin { ..default() }),
             maze::MazeGamePlugins,
             tools::ToolsPlugins,
-            //demo::DemoLightPlugin,
-            //LogDiagnosticsPlugin::default(),
-            //FrameTimeDiagnosticsPlugin,
         ))
         .add_systems(Update, close_on_esc)
         .run();

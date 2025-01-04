@@ -1,6 +1,6 @@
 use bevy::{
     app::PluginGroupBuilder,
-    diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
+    diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::PluginGroup,
 };
 
@@ -17,9 +17,9 @@ impl PluginGroup for ToolsPlugins {
             // Plugins for debugging and development
             group = group
                 .add(FrameTimeDiagnosticsPlugin)
-                .add(EntityCountDiagnosticsPlugin);
+                .add(EntityCountDiagnosticsPlugin)
+                .add(LogDiagnosticsPlugin::default());
         }
-
         group
     }
 }
