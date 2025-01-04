@@ -3,7 +3,6 @@ use bevy::{
     diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin},
     prelude::PluginGroup,
 };
-use bevy_editor_pls::EditorPlugin;
 
 pub struct ToolsPlugins;
 
@@ -17,7 +16,6 @@ impl PluginGroup for ToolsPlugins {
         {
             // Plugins for debugging and development
             group = group
-                .add(EditorPlugin::default())
                 .add(FrameTimeDiagnosticsPlugin)
                 .add(EntityCountDiagnosticsPlugin);
         }
