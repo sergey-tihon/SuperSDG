@@ -17,6 +17,7 @@ fn main() {
                         mode: WindowMode::Windowed,
                         position: WindowPosition::At(IVec2 { x: 0, y: 0 }),
                         resolution: WindowResolution::new(1280., 1460.),
+                        fit_canvas_to_parent: true,
                         ..default()
                     }),
                     ..default()
