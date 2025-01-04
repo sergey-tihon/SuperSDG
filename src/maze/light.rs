@@ -23,16 +23,13 @@ fn setup(mut commands: Commands) {
     });
 
     // directional 'sun' light
-    commands.spawn(SpotLightBundle {
-        spot_light: SpotLight {
-            intensity: 7_000_000.0, // lumens
-            range: 300.0,
-            color: Color::WHITE,
-            shadows_enabled: true,
-            inner_angle: INNER_ANGLE,
-            outer_angle: INNER_ANGLE * 1.5,
-            ..default()
-        },
+    commands.spawn(SpotLight {
+        intensity: 7_000_000.0, // lumens
+        range: 300.0,
+        color: Color::WHITE,
+        shadows_enabled: true,
+        inner_angle: INNER_ANGLE,
+        outer_angle: INNER_ANGLE * 1.5,
         ..default()
     });
 }

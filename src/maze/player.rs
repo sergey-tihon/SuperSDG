@@ -37,30 +37,26 @@ fn setup(
     // Add Player
     let start = level.player_position;
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Sphere { radius: 0.5 }),
-            material: standard_materials.add(StandardMaterial {
-                base_color: RED.into(),
-                ..default()
-            }),
-            transform: Transform::from_translation(start.into()),
+        Mesh3d(meshes.add(Sphere { radius: 0.5 })),
+        MeshMaterial3d(standard_materials.add(StandardMaterial {
+            base_color: RED.into(),
             ..default()
-        },
+        })),
+        Transform::from_translation(start.into()),
         PlayerAnimation(None),
         PressedDirectionIndex(None),
     ));
 
     // Add exit
     let exit = level.exit_position;
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Sphere { radius: 0.5 }),
-        material: standard_materials.add(StandardMaterial {
+    commands.spawn((
+        Mesh3d(meshes.add(Sphere { radius: 0.5 })),
+        MeshMaterial3d(standard_materials.add(StandardMaterial {
             base_color: LIMEGREEN.into(),
             ..default()
-        }),
-        transform: Transform::from_translation(exit.into()),
-        ..default()
-    });
+        })),
+        Transform::from_translation(exit.into()),
+    ));
 }
 
 fn keyboard_input_system(
@@ -130,7 +126,7 @@ fn animate_player_movement(
         player_query.get_single_mut()
     {
         if let Some(animation) = &mut player_animation.0 {
-            let delta = time.delta_seconds();
+            let delta = time.delta_secs();
             animation.time += delta;
 
             let direction_3d = Directions::get_3d(animation.direction_index);

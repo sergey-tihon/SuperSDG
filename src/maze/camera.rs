@@ -39,7 +39,7 @@ pub struct MainCamera;
 // Proper position will be calculated by `CameraChangedEvent` handler
 fn setup(mut commands: Commands) {
     // Main camera
-    commands.spawn((Camera3dBundle { ..default() }, MainCamera));
+    commands.spawn((Camera3d::default(), MainCamera));
 }
 
 fn set_camera_viewports(
@@ -76,25 +76,25 @@ fn keyboard_input_system(
 ) {
     if keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
         if keyboard_input.pressed(KeyCode::ArrowLeft) {
-            camera_settings.angle -= ANGLE_MOVE_SPEED * time.delta_seconds();
+            camera_settings.angle -= ANGLE_MOVE_SPEED * time.delta_secs();
             if camera_settings.angle < 0.0 {
                 camera_settings.angle += 2.0 * PI;
             }
         }
         if keyboard_input.pressed(KeyCode::ArrowRight) {
-            camera_settings.angle += ANGLE_MOVE_SPEED * time.delta_seconds();
+            camera_settings.angle += ANGLE_MOVE_SPEED * time.delta_secs();
             if camera_settings.angle > 2.0 * PI {
                 camera_settings.angle -= 2.0 * PI;
             }
         }
         if keyboard_input.pressed(KeyCode::ArrowDown) {
-            camera_settings.height -= HEIGHT_MOVE_SPEED * time.delta_seconds();
+            camera_settings.height -= HEIGHT_MOVE_SPEED * time.delta_secs();
             if camera_settings.height < HEIGHT_MIN {
                 camera_settings.height = HEIGHT_MIN;
             }
         }
         if keyboard_input.pressed(KeyCode::ArrowUp) {
-            camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_seconds();
+            camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_secs();
             if camera_settings.height > HEIGHT_MAX {
                 camera_settings.height = HEIGHT_MAX;
             }

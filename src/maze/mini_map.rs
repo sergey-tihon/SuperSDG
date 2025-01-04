@@ -31,15 +31,14 @@ fn setup(
 
     // MiniMap camera
     commands.spawn((
-        Camera3dBundle {
-            transform,
-            camera: Camera {
-                // Renders the `mini-map` camera after the `main` camera, which has a default priority of 0
-                order: 1,
-                // don't clear on the second camera because the first camera already cleared the window
-                clear_color: ClearColorConfig::None,
-                ..default()
-            },
+        Name::new("MiniMapCamera"),
+        transform,
+        Camera3d::default(),
+        Camera {
+            // Renders the `mini-map` camera after the `main` camera, which has a default priority of 0
+            order: 1,
+            // don't clear on the second camera because the first camera already cleared the window
+            clear_color: ClearColorConfig::None,
             ..default()
         },
         MiniMapCamera,

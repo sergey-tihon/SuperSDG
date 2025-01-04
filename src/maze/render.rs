@@ -1,5 +1,4 @@
 use bevy::{
-    asset::LoadState,
     prelude::*,
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef},
@@ -35,16 +34,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn create_array_texture(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     level: Res<MazeLevel>,
     mut loading_texture: ResMut<LoadingTexture>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut texture_materials: ResMut<Assets<TextureMaterial>>,
 ) {
-    if loading_texture.is_loaded
-        || asset_server.load_state(loading_texture.wall_handle.id()) != LoadState::Loaded
-        || asset_server.load_state(loading_texture.floor_handle.id()) != LoadState::Loaded
-    {
+    if loading_texture.is_loaded {
         return;
     }
     loading_texture.is_loaded = true;
@@ -64,19 +59,17 @@ fn create_array_texture(
     for (z, s) in level.map.iter().enumerate() {
         for (x, &c) in s.iter().enumerate() {
             if c == '#' {
-                commands.spawn(MaterialMeshBundle {
-                    mesh: cube_handle.clone(),
-                    material: wall_material.clone(),
-                    transform: Transform::from_xyz(x as f32 + 0.5, 0.5, z as f32 + 0.5),
-                    ..default()
-                });
+                commands.spawn((
+                    Mesh3d(cube_handle.clone()),
+                    MeshMaterial3d(wall_material.clone()),
+                    Transform::from_xyz(x as f32 + 0.5, 0.5, z as f32 + 0.5),
+                ));
             } else {
-                commands.spawn(MaterialMeshBundle {
-                    mesh: plane_handle.clone(),
-                    material: floor_material.clone(),
-                    transform: Transform::from_xyz(x as f32 + 0.5, 0.0, z as f32 + 0.5),
-                    ..default()
-                });
+                commands.spawn((
+                    Mesh3d(plane_handle.clone()),
+                    MeshMaterial3d(floor_material.clone()),
+                    Transform::from_xyz(x as f32 + 0.5, 0.0, z as f32 + 0.5),
+                ));
             }
         }
     }
