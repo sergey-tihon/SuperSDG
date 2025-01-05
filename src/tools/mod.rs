@@ -1,25 +1,20 @@
-use bevy::{
-    app::PluginGroupBuilder,
-    diagnostic::{EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    prelude::PluginGroup,
+use bevy::diagnostic::{
+    EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin,
 };
+use bevy::{app::PluginGroupBuilder, prelude::PluginGroup};
 
 pub struct ToolsPlugins;
 
 impl PluginGroup for ToolsPlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
-        let mut group = PluginGroupBuilder::start::<Self>();
-
-        // Extra tools
-
-        #[cfg(debug_assertions)]
-        {
+        if cfg!(debug_assertions) {
             // Plugins for debugging and development
-            group = group
+            PluginGroupBuilder::start::<Self>()
                 .add(FrameTimeDiagnosticsPlugin)
                 .add(EntityCountDiagnosticsPlugin)
-                .add(LogDiagnosticsPlugin::default());
+                .add(LogDiagnosticsPlugin::default())
+        } else {
+            PluginGroupBuilder::start::<Self>()
         }
-        group
     }
 }
