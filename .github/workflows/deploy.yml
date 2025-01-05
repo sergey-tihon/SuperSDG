@@ -18,6 +18,8 @@ jobs:
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
+        with:
+          target: "wasm32-unknown-unknown"
 
       - name: Cache Cargo binaries
         uses: actions/cache@v4
