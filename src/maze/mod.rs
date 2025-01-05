@@ -1,4 +1,7 @@
-use bevy::{app::PluginGroupBuilder, prelude::PluginGroup};
+use bevy::{
+    app::PluginGroupBuilder,
+    prelude::{PluginGroup, SystemSet},
+};
 
 use self::{
     camera::MazeCameraPlugin, level::MazeLevelPlugin, light::MazeLightPlugin,
@@ -11,6 +14,11 @@ mod light;
 mod mini_map;
 mod player;
 mod render;
+
+pub use camera::MainCamera;
+
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct CameraSwawned;
 
 pub struct MazeGamePlugins;
 

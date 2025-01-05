@@ -13,7 +13,7 @@ impl Plugin for MazeCameraPlugin {
             radius: 20.0,
             angle: FRAC_PI_2,
         })
-        .add_systems(Startup, setup)
+        .add_systems(Startup, setup.in_set(super::CameraSwawned))
         .add_systems(
             Update,
             (
@@ -33,13 +33,14 @@ pub struct CameraSettings {
 }
 
 #[derive(Component)]
+#[require(Camera3d)]
 pub struct MainCamera;
 
 // Setup camera objects but without any exact position
 // Proper position will be calculated by `CameraChangedEvent` handler
 fn setup(mut commands: Commands) {
     // Main camera
-    commands.spawn((Camera3d::default(), MainCamera));
+    commands.spawn(MainCamera);
 }
 
 fn set_camera_viewports(
