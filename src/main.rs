@@ -10,7 +10,7 @@ fn main() {
             DefaultPlugins
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        title: "SuperSDG3: From dust to Rust".to_string(),
+                        title: "SuperSDG 3".to_string(),
                         present_mode: PresentMode::AutoVsync,
                         window_theme: Some(WindowTheme::Dark),
                         mode: WindowMode::Windowed,

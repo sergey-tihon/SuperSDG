@@ -1,18 +1,17 @@
-use bevy::diagnostic::{
-    EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin,
-};
-use bevy::{app::PluginGroupBuilder, prelude::PluginGroup};
+use bevy::app::{PluginGroup, PluginGroupBuilder};
+
+mod debug;
+mod fps_overlay;
 
 pub struct ToolsPlugins;
 
 impl PluginGroup for ToolsPlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
-        if cfg!(debug_assertions) {
+        if cfg!(feature = "dev") {
             // Plugins for debugging and development
             PluginGroupBuilder::start::<Self>()
-                .add(FrameTimeDiagnosticsPlugin)
-                .add(EntityCountDiagnosticsPlugin)
-                .add(LogDiagnosticsPlugin::default())
+                .add(debug::plugin)
+                .add(fps_overlay::plugin)
         } else {
             PluginGroupBuilder::start::<Self>()
         }
