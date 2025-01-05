@@ -4,7 +4,7 @@ target = "web/index.html"
 # Set the output directory for the web build.
 dist = "dist/"
 # This is needed in order to host the game on github.io
-public_url = "./SuperSDG/"
+public_url = "./"
 
 minify = "on_release"
 
