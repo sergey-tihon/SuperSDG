@@ -1,0 +1,84 @@
+name: deploy.yml
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          target: "wasm32-unknown-unknown"
+
+      - name: Cache Cargo binaries
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin
+          key: ${{ runner.os }}-cargo-bin-trunk-0.21.4
+          restore-keys: |
+            ${{ runner.os }}-cargo-bin
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-0001-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-0001-
+
+      - name: Install Trunk
+        run: |
+          if ! command -v trunk &> /dev/null; then
+            cargo install trunk
+          else
+            echo "Trunk is cached and already installed."
+          fi
+
+      - name: Install wasm-bindgen-cli
+        run: |
+          if ! command -v wasm-bindgen &> /dev/null; then
+            cargo install wasm-bindgen-cli
+          else
+            echo "wasm-bindgen-cli is cached and already installed."
+          fi
+
+      - name: Build with Trunk
+        run: trunk build --release
+
+      - name: Upload static files as artifact
+        id: deployment
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/
+
+  # Deploy job
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+
+    permissions:
+      pages: write
+      id-token: write
+
+    # Deploy to the github-pages environment
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    # Specify runner + deployment step
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
