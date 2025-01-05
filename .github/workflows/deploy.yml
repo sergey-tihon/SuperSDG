@@ -65,6 +65,7 @@ jobs:
   # Deploy job
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/main'
 
     permissions:
       pages: write
