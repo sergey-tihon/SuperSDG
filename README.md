@@ -8,26 +8,24 @@ then [ported to 3d (C++ & OpenGL)](https://sergeytihon.com/2013/03/16/supersdg2-
 Run locally in the native window:
 
 ```shell
-cargo run --features "bevy/dynamic_linking"
+cargo run
 ```
 
 Run locally in the browser:
 
 ```shell
-cargo run --target wasm32-unknown-unknown
+trunk serve
 ```
 
 ## Bevy Learning Materials
 
 - [Bevy](https://bevyengine.org/)
 - [Official Bevy Docs](https://docs.rs/bevy/latest/bevy/)
+- [Bevy game development](https://taintedcoders.com) & [Bevy Starter](https://github.com/nolantait/bevy-starter/)
 - [Unofficial Bevy Cheat Book](https://bevy-cheatbook.github.io/tutorial.html)
 - [Making Games in Rust Series' Articles](https://dev.to/sbelzile/series/16367)
-- [Bevy game development](https://taintedcoders.com)
-- [Bevy Starter](https://github.com/nolantait/bevy-starter/)
 
 ### Assets
 
 - [Kenney's Assets](https://kenney.nl/assets)
 - <https://github.com/camsjams/rust-cruncher-munchers/blob/main/src/main.rs>
-
