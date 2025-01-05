@@ -17,3 +17,6 @@ Cargo.lock
 
 # Temp folder
 temp/
+
+# Target folder for Trunk build
+dist/
