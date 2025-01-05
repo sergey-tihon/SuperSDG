@@ -1,9 +1,12 @@
 name: deploy.yml
 
-# on:
-#   push:
-#     branches:
-#       - pages_deploy
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
