@@ -9,16 +9,17 @@ use self::{
 };
 
 mod camera;
+mod fps_overlay;
 mod level;
 mod light;
 mod mini_map;
 mod player;
 mod render;
 
-pub use camera::MainCamera;
-
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct CameraSwawned;
+
+pub use camera::MainCamera;
 
 pub struct MazeGamePlugins;
 
@@ -31,6 +32,7 @@ impl PluginGroup for MazeGamePlugins {
             .add(MazeLevelPlugin)
             .add(PlayerPlugin)
             .add(MazeCameraPlugin)
+            .add(fps_overlay::FpsOverlayPlugin::default())
             .add(MiniMapPlugin)
             .add(MazeLightPlugin)
             .add(MazeRenderPlugin);

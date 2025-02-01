@@ -25,7 +25,7 @@ impl Plugin for FpsOverlayPlugin {
             app.add_plugins(FrameTimeDiagnosticsPlugin);
         }
         app.insert_resource(self.config.clone())
-            .add_systems(Startup, setup.after(crate::maze::CameraSwawned))
+            .add_systems(Startup, setup.after(super::CameraSwawned))
             .add_systems(
                 Update,
                 (
@@ -67,7 +67,7 @@ struct FpsText;
 fn setup(
     mut commands: Commands,
     overlay_config: Res<FpsOverlayConfig>,
-    camera: Query<Entity, With<crate::maze::MainCamera>>,
+    camera: Query<Entity, With<super::MainCamera>>,
 ) {
     let camera = camera.single();
     commands
