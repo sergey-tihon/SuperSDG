@@ -106,7 +106,7 @@ impl MazeLevel {
             .cloned()
             .collect();
 
-        for (&dx, &dy) in dir_choices.iter() {
+        for &(&dx, &dy) in dir_choices.iter() {
             let nx = x as i32 + 2 * dx;
             let ny = y as i32 + 2 * dy;
             let nx = nx as usize;
