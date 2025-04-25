@@ -22,7 +22,7 @@ impl Plugin for FpsOverlayPlugin {
     fn build(&self, app: &mut App) {
         // TODO: Use plugin dependencies, see https://github.com/bevyengine/bevy/issues/69
         if !app.is_plugin_added::<FrameTimeDiagnosticsPlugin>() {
-            app.add_plugins(FrameTimeDiagnosticsPlugin);
+            app.add_plugins(FrameTimeDiagnosticsPlugin::default());
         }
         app.insert_resource(self.config.clone())
             .add_systems(Startup, setup.after(super::CameraSwawned))
@@ -69,27 +69,28 @@ fn setup(
     overlay_config: Res<FpsOverlayConfig>,
     camera: Query<Entity, With<super::MainCamera>>,
 ) {
-    let camera = camera.single();
-    commands
-        .spawn((
-            TargetCamera(camera),
-            Node {
-                // We need to make sure the overlay doesn't affect the position of other UI nodes
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-            // Render overlay on top of everything
-            GlobalZIndex(FPS_OVERLAY_ZINDEX),
-        ))
-        .with_children(|p| {
-            p.spawn((
-                Text::new("FPS: "),
-                overlay_config.text_config.clone(),
-                TextColor(overlay_config.text_color),
-                FpsText,
+    if let Ok(camera) = camera.single() {
+        commands
+            .spawn((
+                UiTargetCamera(camera),
+                Node {
+                    // We need to make sure the overlay doesn't affect the position of other UI nodes
+                    position_type: PositionType::Absolute,
+                    ..default()
+                },
+                // Render overlay on top of everything
+                GlobalZIndex(FPS_OVERLAY_ZINDEX),
             ))
-            .with_child((TextSpan::default(), overlay_config.text_config.clone()));
-        });
+            .with_children(|p| {
+                p.spawn((
+                    Text::new("FPS: "),
+                    overlay_config.text_config.clone(),
+                    TextColor(overlay_config.text_color),
+                    FpsText,
+                ))
+                .with_child((TextSpan::default(), overlay_config.text_config.clone()));
+            });
+    }
 }
 
 fn update_text(

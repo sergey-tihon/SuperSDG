@@ -68,21 +68,22 @@ fn keyboard_input_system(
     >,
     camera_query: Query<&Transform, With<MainCamera>>,
 ) {
-    if let Ok((mut animation, mut direction_index)) = player_query.get_single_mut() {
+    if let Ok((mut animation, mut direction_index)) = player_query.single_mut() {
         if let Some(index_delta) = get_pressed_index_delta(keyboard_input) {
-            let camera = camera_query.get_single().unwrap();
-            let camera_forward = (*camera).forward();
+            if let Ok(camera) = camera_query.single() {
+                let camera_forward = (*camera).forward();
 
-            let up_direction_index = Directions::get_closest(camera_forward.into());
-            let index = (up_direction_index + index_delta as usize) % 4;
-            direction_index.0 = Some(index);
+                let up_direction_index = Directions::get_closest(camera_forward.into());
+                let index = (up_direction_index + index_delta as usize) % 4;
+                direction_index.0 = Some(index);
 
-            let next_position = level.player_position.get_next(index);
-            if animation.0.is_none() && level.is_cell_empty(next_position) {
-                animation.0 = Some(AnimationState {
-                    time: 0.0,
-                    direction_index: index,
-                });
+                let next_position = level.player_position.get_next(index);
+                if animation.0.is_none() && level.is_cell_empty(next_position) {
+                    animation.0 = Some(AnimationState {
+                        time: 0.0,
+                        direction_index: index,
+                    });
+                }
             }
         } else {
             direction_index.0 = None;
@@ -123,7 +124,7 @@ fn animate_player_movement(
     >,
 ) {
     if let Ok((mut player_transform, mut player_animation, direction_index)) =
-        player_query.get_single_mut()
+        player_query.single_mut()
     {
         if let Some(animation) = &mut player_animation.0 {
             let delta = time.delta_secs();

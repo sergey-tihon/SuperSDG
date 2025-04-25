@@ -20,6 +20,7 @@ fn setup(mut commands: Commands) {
     commands.insert_resource(AmbientLight {
         color: ORANGE_RED.into(),
         brightness: 0.02,
+        ..Default::default()
     });
 
     // directional 'sun' light
@@ -51,9 +52,9 @@ fn animate_light_direction(
     player_position: Query<&Transform, With<PlayerAnimation>>,
 ) {
     if let (Ok(mut light), Ok(player), Ok(camera)) = (
-        light_query.get_single_mut(),
-        player_position.get_single(),
-        camera_query.get_single(),
+        light_query.single_mut(),
+        player_position.single(),
+        camera_query.single(),
     ) {
         (*light) =
             Transform::from_translation(camera.translation).looking_at(player.translation, Vec3::Y);
