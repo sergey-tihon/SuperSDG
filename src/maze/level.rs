@@ -188,7 +188,7 @@ impl fmt::Display for MazeLevel {
 
 #[cfg(test)]
 mod test {
-    use super::MazeLevel;
+    use super::{MazeLevel, Vec2i};
 
     #[test]
     fn border_exist() {
@@ -210,5 +210,61 @@ mod test {
 
         assert_eq!(level.map[start.0][start.1], ' ');
         assert_eq!(level.map[exit.0][exit.1], ' ');
+    }
+
+    #[test]
+    fn is_cell_empty_correctly_identifies_empty_cells() {
+        let level = MazeLevel::new(20, 20);
+
+        // Check all cells in the maze
+        for x in 0..level.width {
+            for y in 0..level.height {
+                let position = Vec2i(x as i32, y as i32);
+                let is_empty = level.is_cell_empty(position);
+                let cell_value = level.map[x][y];
+
+                if cell_value == ' ' {
+                    assert!(is_empty, "Cell at ({}, {}) should be empty", x, y);
+                } else {
+                    assert!(!is_empty, "Cell at ({}, {}) should not be empty", x, y);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn player_placement_is_always_in_empty_cell() {
+        let level = MazeLevel::new(20, 20);
+        let player_pos = level.player_position;
+
+        // Convert to usize for map access
+        let x = player_pos.0 as usize;
+        let y = player_pos.1 as usize;
+
+        // Check that the player is placed in an empty cell
+        assert_eq!(level.map[x][y], ' ', "Player should be placed in an empty cell");
+
+        // Check that is_cell_empty returns true for the player position
+        assert!(level.is_cell_empty(player_pos), "is_cell_empty should return true for player position");
+    }
+
+    #[test]
+    fn movement_in_all_directions() {
+        let level = MazeLevel::new(20, 20);
+        let player_pos = level.player_position;
+
+        // Test movement in all four directions
+        for direction in 0..4 {
+            let next_pos = player_pos.get_next(direction);
+
+            // If the next position is empty, movement should be allowed
+            if level.map[next_pos.0 as usize][next_pos.1 as usize] == ' ' {
+                assert!(level.is_cell_empty(next_pos), 
+                    "Movement to ({}, {}) should be allowed", next_pos.0, next_pos.1);
+            } else {
+                assert!(!level.is_cell_empty(next_pos), 
+                    "Movement to ({}, {}) should not be allowed", next_pos.0, next_pos.1);
+            }
+        }
     }
 }
