@@ -70,6 +70,8 @@ const HEIGHT_MIN: f32 = 3.0;
 const HEIGHT_MAX: f32 = 30.0;
 const ANGLE_MOVE_SPEED: f32 = 0.8;
 const HEIGHT_MOVE_SPEED: f32 = 15.0;
+const RADIUS_MAX: f32 = 20.0;
+const RADIUS_MIN: f32 = 0.5; // Minimum radius to prevent glitches at extreme heights
 
 fn keyboard_input_system(
     time: Res<Time>,
@@ -94,14 +96,33 @@ fn keyboard_input_system(
             if camera_settings.height < HEIGHT_MIN {
                 camera_settings.height = HEIGHT_MIN;
             }
+            adjust_radius_based_on_height(&mut camera_settings);
         }
         if keyboard_input.pressed(KeyCode::ArrowUp) {
             camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_secs();
             if camera_settings.height > HEIGHT_MAX {
                 camera_settings.height = HEIGHT_MAX;
             }
+            adjust_radius_based_on_height(&mut camera_settings);
         }
     }
+}
+
+// Adjust radius based on camera height
+// When camera is very high or very low, radius should be close to minimum
+// When camera is at medium height, radius should be at maximum
+fn adjust_radius_based_on_height(camera_settings: &mut CameraSettings) {
+    // Calculate the normalized height (0.0 to 1.0)
+    let height_range = HEIGHT_MAX - HEIGHT_MIN;
+    let normalized_height = (camera_settings.height - HEIGHT_MIN) / height_range;
+
+    // Calculate a factor that peaks at 0.5 (middle height) and approaches 0 at extremes
+    // Using a parabolic function: 4 * x * (1 - x) which peaks at x = 0.5
+    let height_factor = 4.0 * normalized_height * (1.0 - normalized_height);
+
+    // Apply the factor to the radius, ensuring it never goes below RADIUS_MIN
+    let radius_range = RADIUS_MAX - RADIUS_MIN;
+    camera_settings.radius = RADIUS_MIN + radius_range * height_factor;
 }
 
 fn update_camera_position(
