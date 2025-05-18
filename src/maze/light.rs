@@ -17,18 +17,18 @@ const INNER_ANGLE: f32 = PI / 18.0; // More focused beam (10 degrees)
 const OUTER_ANGLE: f32 = PI / 12.0; // 15 degrees
 // Adjust light intensity based on distance and height
 const BASE_INTENSITY: f32 = 5_000_000.0;
-const DISTANCE_RANGE: (f32, f32) = (5.0, 40.0);  // min, max
-const HEIGHT_RANGE: (f32, f32) = (5.0, 30.0);    // min, max
+const DISTANCE_RANGE: (f32, f32) = (5.0, 40.0); // min, max
+const HEIGHT_RANGE: (f32, f32) = (5.0, 30.0); // min, max
 
 fn setup(mut commands: Commands) {
     // ambient light
     commands.insert_resource(AmbientLight {
         color: GOLD.into(),
-        brightness: 0.05, // Slightly brighter ambient light
+        brightness: 0.10, // Slightly brighter ambient light
         ..Default::default()
     });
 
-    // directional 'sun' light
+    // Only spawn the spotlight (no directional light)
     commands.spawn(SpotLight {
         intensity: 10_000_000.0, // Increased intensity for brighter beam
         range: 300.0,
@@ -71,7 +71,11 @@ fn animate_light_direction(
             ((value - range.0) / (range.1 - range.0)).clamp(0.0, 1.0)
         };
 
-        let distance_factor = 0.5 + normalize(camera.translation.distance(player.translation), DISTANCE_RANGE) * 2.0;
+        let distance_factor = 0.5
+            + normalize(
+                camera.translation.distance(player.translation),
+                DISTANCE_RANGE,
+            ) * 2.0;
         let height_factor = 1.0 + normalize(camera.translation.y, HEIGHT_RANGE) * 1.5;
 
         spotlight.intensity = BASE_INTENSITY * distance_factor * height_factor;
