@@ -4,6 +4,10 @@ use std::collections::VecDeque;
 use std::fmt;
 use std::ops::Add;
 
+/// Coordinate convention: (x, y) where x is the column (horizontal), y is the row (vertical).
+/// All coordinates are 0-based, with (0,0) at the top-left corner of the maze.
+/// Vec2i stores coordinates as (i32, i32) to allow for negative values during calculations,
+/// but all indexing into the map must be checked for non-negativity and bounds.
 pub struct MazeLevelPlugin;
 
 impl Plugin for MazeLevelPlugin {
@@ -13,7 +17,7 @@ impl Plugin for MazeLevelPlugin {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Vec2i(i32, i32);
+pub struct Vec2i(pub i32, pub i32);
 
 impl std::ops::Add<Vec2i> for Vec2i {
     type Output = Vec2i;
@@ -30,6 +34,15 @@ impl Vec2i {
 
     pub fn get_next(&self, direction_index: usize) -> Vec2i {
         self.add(Directions::get_2d(direction_index))
+    }
+
+    /// Returns Some((x, y)) as usize if both coordinates are non-negative, otherwise None.
+    pub fn to_usize(self) -> Option<(usize, usize)> {
+        if self.0 >= 0 && self.1 >= 0 {
+            Some((self.0 as usize, self.1 as usize))
+        } else {
+            None
+        }
     }
 }
 
@@ -84,7 +97,7 @@ impl MazeLevel {
         let mut maze = MazeLevel {
             width,
             height,
-            map: vec![vec!['#'; height]; width],
+            map: vec![vec!['#'; width]; height],
             player_position: Vec2i(0, 0),
             exit_position: Vec2i(0, 0),
         };
@@ -109,13 +122,17 @@ impl MazeLevel {
         for &(&dx, &dy) in dir_choices.iter() {
             let nx = x as i32 + 2 * dx;
             let ny = y as i32 + 2 * dy;
-            let nx = nx as usize;
-            let ny = ny as usize;
-
-            if nx < self.width - 1 && ny < self.height - 1 && self.map[nx][ny] == '#' {
-                self.map[(x as i32 + dx) as usize][(y as i32 + dy) as usize] = ' ';
-                self.map[nx][ny] = ' ';
-                self.generate_maze(nx, ny);
+            // Only proceed if nx, ny are non-negative and within bounds
+            if nx > 0 && ny > 0 {
+                let nx_usize = nx as usize;
+                let ny_usize = ny as usize;
+                if nx_usize < self.width - 1 && ny_usize < self.height - 1 && self.map[ny_usize][nx_usize] == '#' {
+                    let wall_x = (x as i32 + dx) as usize;
+                    let wall_y = (y as i32 + dy) as usize;
+                    self.map[wall_y][wall_x] = ' ';
+                    self.map[ny_usize][nx_usize] = ' ';
+                    self.generate_maze(nx_usize, ny_usize);
+                }
             }
         }
     }
@@ -132,18 +149,22 @@ impl MazeLevel {
 
             while let Some((x, y, dist)) = queue.pop_front() {
                 for (dx, dy) in [(-1, 0), (1, 0), (0, -1), (0, 1)].iter() {
-                    let nx = (x as i32 + dx) as usize;
-                    let ny = (y as i32 + dy) as usize;
-                    if nx < maze.width
-                        && ny < maze.height
-                        && maze.map[nx][ny] == ' '
-                        && !visited[nx][ny]
-                    {
-                        visited[nx][ny] = true;
-                        queue.push_back((nx, ny, dist + 1));
-                        if dist > max_distance {
-                            max_distance = dist + 1;
-                            farthest_cell = (nx, ny);
+                    let nx = x as i32 + dx;
+                    let ny = y as i32 + dy;
+                    if nx >= 0 && ny >= 0 {
+                        let nx_usize = nx as usize;
+                        let ny_usize = ny as usize;
+                        if nx_usize < maze.width
+                            && ny_usize < maze.height
+                            && maze.map[ny_usize][nx_usize] == ' '
+                            && !visited[nx_usize][ny_usize]
+                        {
+                            visited[nx_usize][ny_usize] = true;
+                            queue.push_back((nx_usize, ny_usize, dist + 1));
+                            if dist + 1 > max_distance {
+                                max_distance = dist + 1;
+                                farthest_cell = (nx_usize, ny_usize);
+                            }
                         }
                     }
                 }
@@ -155,7 +176,7 @@ impl MazeLevel {
         let mut rng = rand::thread_rng();
         let empty_cells: Vec<(usize, usize)> = (1..self.width)
             .flat_map(|x| (1..self.height).map(move |y| (x, y)))
-            .filter(|&(x, y)| self.map[x][y] == ' ')
+            .filter(|&(x, y)| self.map[y][x] == ' ')
             .collect();
         let &(start_x, start_y) = empty_cells.choose(&mut rng).unwrap();
         let (exit, _) = bfs(self, start_x, start_y);
@@ -163,14 +184,13 @@ impl MazeLevel {
         ((start_x, start_y), exit)
     }
 
+    /// Safely checks if a cell is empty, returning false if out of bounds or negative.
     pub fn is_cell_empty(&self, position: Vec2i) -> bool {
-        let x = position.0 as usize;
-        let y = position.1 as usize;
-        0 <= position.0
-            && x < self.width
-            && 0 <= position.1
-            && y < self.height
-            && self.map[y][x] != '#'
+        if let Some((x, y)) = position.to_usize() {
+            x < self.width && y < self.height && self.map[y][x] != '#'
+        } else {
+            false
+        }
     }
 }
 
@@ -208,8 +228,8 @@ mod test {
         let level = MazeLevel::new(20, 20);
         let (start, exit) = level.random_player_and_exit_positions();
 
-        assert_eq!(level.map[start.0][start.1], ' ');
-        assert_eq!(level.map[exit.0][exit.1], ' ');
+        assert_eq!(level.map[start.1][start.0], ' ');
+        assert_eq!(level.map[exit.1][exit.0], ' ');
     }
 
     #[test]
@@ -221,7 +241,7 @@ mod test {
             for y in 0..level.height {
                 let position = Vec2i(x as i32, y as i32);
                 let is_empty = level.is_cell_empty(position);
-                let cell_value = level.map[x][y];
+                let cell_value = level.map[y][x];
 
                 if cell_value == ' ' {
                     assert!(is_empty, "Cell at ({}, {}) should be empty", x, y);
@@ -242,10 +262,16 @@ mod test {
         let y = player_pos.1 as usize;
 
         // Check that the player is placed in an empty cell
-        assert_eq!(level.map[x][y], ' ', "Player should be placed in an empty cell");
+        assert_eq!(
+            level.map[y][x], ' ',
+            "Player should be placed in an empty cell"
+        );
 
         // Check that is_cell_empty returns true for the player position
-        assert!(level.is_cell_empty(player_pos), "is_cell_empty should return true for player position");
+        assert!(
+            level.is_cell_empty(player_pos),
+            "is_cell_empty should return true for player position"
+        );
     }
 
     #[test]
@@ -257,13 +283,31 @@ mod test {
         for direction in 0..4 {
             let next_pos = player_pos.get_next(direction);
 
-            // If the next position is empty, movement should be allowed
-            if level.map[next_pos.0 as usize][next_pos.1 as usize] == ' ' {
-                assert!(level.is_cell_empty(next_pos), 
-                    "Movement to ({}, {}) should be allowed", next_pos.0, next_pos.1);
+            // Use safe indexing for test
+            if let Some((x, y)) = next_pos.to_usize() {
+                if x < level.width && y < level.height && level.map[y][x] == ' ' {
+                    assert!(
+                        level.is_cell_empty(next_pos),
+                        "Movement to ({}, {}) should be allowed",
+                        next_pos.0,
+                        next_pos.1
+                    );
+                } else {
+                    assert!(
+                        !level.is_cell_empty(next_pos),
+                        "Movement to ({}, {}) should not be allowed",
+                        next_pos.0,
+                        next_pos.1
+                    );
+                }
             } else {
-                assert!(!level.is_cell_empty(next_pos), 
-                    "Movement to ({}, {}) should not be allowed", next_pos.0, next_pos.1);
+                // Out of bounds or negative, must not be empty
+                assert!(
+                    !level.is_cell_empty(next_pos),
+                    "Movement to ({}, {}) should not be allowed (out of bounds)",
+                    next_pos.0,
+                    next_pos.1
+                );
             }
         }
     }
