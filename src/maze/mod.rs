@@ -4,12 +4,14 @@ use bevy::{
 };
 
 use self::{
-    camera::MazeCameraPlugin, level::MazeLevelPlugin, light::MazeLightPlugin,
-    mini_map::MiniMapPlugin, player::PlayerPlugin, render::MazeRenderPlugin,
+    camera::MazeCameraPlugin, level::MazeLevelPlugin, 
+    light::MazeLightPlugin, mini_map::MiniMapPlugin, player::PlayerPlugin, 
+    render::MazeRenderPlugin,
 };
 
 mod camera;
 mod fps_overlay;
+mod help_overlay;
 mod level;
 mod light;
 mod mini_map;
@@ -33,6 +35,7 @@ impl PluginGroup for MazeGamePlugins {
             .add(PlayerPlugin)
             .add(MazeCameraPlugin)
             .add(fps_overlay::FpsOverlayPlugin::default())
+            .add(help_overlay::HelpOverlayPlugin::default())
             .add(MiniMapPlugin)
             .add(MazeLightPlugin)
             .add(MazeRenderPlugin);
