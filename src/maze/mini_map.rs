@@ -1,6 +1,6 @@
 use std::cmp;
 
-use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
+use bevy::{camera::Viewport, prelude::*, window::WindowResized};
 
 use super::level::MazeLevel;
 
@@ -20,7 +20,7 @@ fn setup(
     level: Res<MazeLevel>,
     mut commands: Commands,
     windows: Query<(&Window, Entity)>,
-    mut resize_events: EventWriter<WindowResized>,
+    mut resize_events: MessageWriter<WindowResized>,
 ) {
     // MiniMap camera position update
     let mid_x = level.width as f32 / 2.0;
@@ -57,7 +57,7 @@ fn setup(
 
 fn set_camera_viewports(
     windows: Query<&Window>,
-    mut resize_events: EventReader<WindowResized>,
+    mut resize_events: MessageReader<WindowResized>,
     mut mini_camera: Query<&mut Camera, With<MiniMapCamera>>,
 ) {
     // We need to dynamically resize the camera's viewports whenever the window size changes

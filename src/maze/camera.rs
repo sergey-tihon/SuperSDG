@@ -1,6 +1,6 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
+use bevy::{camera::Viewport, prelude::*, window::WindowResized};
 
 use super::player::PlayerAnimation;
 
@@ -45,7 +45,7 @@ fn setup(mut commands: Commands) {
 
 fn set_camera_viewports(
     windows: Query<&Window>,
-    mut resize_events: EventReader<WindowResized>,
+    mut resize_events: MessageReader<WindowResized>,
     mut main_camera: Query<&mut Camera, With<MainCamera>>,
 ) {
     // We need to dynamically resize the camera's viewports whenever the window size changes
