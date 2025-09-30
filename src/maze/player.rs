@@ -125,32 +125,31 @@ fn animate_player_movement(
 ) {
     if let Ok((mut player_transform, mut player_animation, direction_index)) =
         player_query.single_mut()
+        && let Some(animation) = &mut player_animation.0
     {
-        if let Some(animation) = &mut player_animation.0 {
-            let delta = time.delta_secs();
-            animation.time += delta;
+        let delta = time.delta_secs();
+        animation.time += delta;
 
-            let direction_3d = Directions::get_3d(animation.direction_index);
-            if animation.time < MOVEMENT_TIME {
-                // We are still in the middle of the movement animation
+        let direction_3d = Directions::get_3d(animation.direction_index);
+        if animation.time < MOVEMENT_TIME {
+            // We are still in the middle of the movement animation
+            player_transform.translation += direction_3d * delta / MOVEMENT_TIME;
+        } else {
+            let level = level.as_mut();
+            level.player_position = level.player_position.get_next(animation.direction_index);
+            let next_next_position = level.player_position.get_next(animation.direction_index);
+
+            if Some(animation.direction_index) == direction_index.0
+                && level.is_cell_empty(next_next_position)
+            {
+                // We finished the movement animation, but the player is still pressing the same direction button
+                // so we continue the animation int the same direction for a smooth camera experience
                 player_transform.translation += direction_3d * delta / MOVEMENT_TIME;
+                animation.time -= MOVEMENT_TIME;
             } else {
-                let level = level.as_mut();
-                level.player_position = level.player_position.get_next(animation.direction_index);
-                let next_next_position = level.player_position.get_next(animation.direction_index);
-
-                if Some(animation.direction_index) == direction_index.0
-                    && level.is_cell_empty(next_next_position)
-                {
-                    // We finished the movement animation, but the player is still pressing the same direction button
-                    // so we continue the animation int the same direction for a smooth camera experience
-                    player_transform.translation += direction_3d * delta / MOVEMENT_TIME;
-                    animation.time -= MOVEMENT_TIME;
-                } else {
-                    // We finished the movement animation and the player should stay in the middle of target cell
-                    player_transform.translation = level.player_position.into();
-                    player_animation.0 = None;
-                }
+                // We finished the movement animation and the player should stay in the middle of target cell
+                player_transform.translation = level.player_position.into();
+                player_animation.0 = None;
             }
         }
     }

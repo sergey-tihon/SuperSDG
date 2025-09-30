@@ -63,23 +63,23 @@ fn set_camera_viewports(
     // We need to dynamically resize the camera's viewports whenever the window size changes
     // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
     for resize_event in resize_events.read() {
-        if let Ok(window) = windows.get(resize_event.window) {
-            if let Ok(mut mini_camera) = mini_camera.single_mut() {
-                let mini_camera_size = cmp::min(
-                    window.resolution.physical_width() / 4,
-                    window.resolution.physical_height() / 3,
-                );
+        if let Ok(window) = windows.get(resize_event.window)
+            && let Ok(mut mini_camera) = mini_camera.single_mut()
+        {
+            let mini_camera_size = cmp::min(
+                window.resolution.physical_width() / 4,
+                window.resolution.physical_height() / 3,
+            );
 
-                mini_camera.viewport = Some(Viewport {
-                    physical_position: UVec2::new(
-                        window.resolution.physical_width() - mini_camera_size,
-                        0,
-                    ),
-                    physical_size: UVec2::new(mini_camera_size, mini_camera_size),
+            mini_camera.viewport = Some(Viewport {
+                physical_position: UVec2::new(
+                    window.resolution.physical_width() - mini_camera_size,
+                    0,
+                ),
+                physical_size: UVec2::new(mini_camera_size, mini_camera_size),
 
-                    ..default()
-                });
-            }
+                ..default()
+            });
         }
     }
 }
