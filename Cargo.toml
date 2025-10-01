@@ -4,8 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.17.0", features = ["dynamic_linking"] }
-rand = { version = "0.8.5" }
+bevy = { version = "0.17.1", features = ["dynamic_linking"] }
+rand = { version = "0.9" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3.3", features = ["wasm_js"], optional = false }
+
 
 [features]
 default = [

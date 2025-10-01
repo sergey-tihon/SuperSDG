@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use rand::seq::SliceRandom;
+use rand::prelude::*;
 use std::collections::VecDeque;
 use std::fmt;
 use std::ops::Add;
@@ -112,7 +112,7 @@ impl MazeLevel {
     }
 
     fn generate_maze(&mut self, x: usize, y: usize) {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let directions: [(&i32, &i32); 4] = [(&0, &1), (&1, &0), (&0, &-1), (&-1, &0)];
         let dir_choices: Vec<_> = directions
             .choose_multiple(&mut rng, directions.len())
@@ -173,7 +173,7 @@ impl MazeLevel {
             (farthest_cell, max_distance)
         }
 
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let empty_cells: Vec<(usize, usize)> = (1..self.width)
             .flat_map(|x| (1..self.height).map(move |y| (x, y)))
             .filter(|&(x, y)| self.map[y][x] == ' ')
