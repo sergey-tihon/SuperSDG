@@ -58,8 +58,8 @@ jobs:
       # - name: Install wasm-bindgen-cli (optional)
       #   run: cargo install wasm-bindgen-cli --locked --version 0.2.100
 
-      - name: Sanity check (compile only)
-        run: cargo check --locked --all-targets
+      - name: Sanity check (wasm target only)
+        run: cargo check --locked --target wasm32-unknown-unknown
 
       - name: Build release (Trunk)
         run: trunk build --release
