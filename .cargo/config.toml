@@ -90,8 +90,8 @@ rustflags = [
   # - Arch: `sudo pacman -S lld clang`
   # "-Clink-arg=-fuse-ld=lld",
 
-  # (Mold disabled in CI due to missing binary)
-  # "-Clink-arg=-fuse-ld=/usr/bin/mold",
+    # Mold linker (enabled; ensure mold installed in CI)
+  "-Clink-arg=-fuse-ld=/usr/bin/mold",
 
   # Nightly
   # "-Zshare-generics=y",

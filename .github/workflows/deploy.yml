@@ -40,6 +40,12 @@ jobs:
           # If Trunk version changes, this ensures rebuild
           shared-key: trunk-${{ env.TRUNK_VERSION }}
 
+      - name: Install mold linker
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y mold clang
+          mold --version || true
+
       - name: Install Trunk (pinned)
         run: |
           if ! command -v trunk >/dev/null 2>&1 || [[ "$(trunk --version)" != *"${TRUNK_VERSION}"* ]]; then \
