@@ -90,13 +90,7 @@ rustflags = [
   # - Arch: `sudo pacman -S lld clang`
   # "-Clink-arg=-fuse-ld=lld",
 
-  # Mold linker
-  #
-  # You may need to install it:
-  #
-  # - Ubuntu: `sudo apt-get install mold clang`
-  # - Fedora: `sudo dnf install mold clang`
-  # - Arch: `sudo pacman -S mold clang`
+    # Mold linker (enabled; ensure mold installed in CI)
   "-Clink-arg=-fuse-ld=/usr/bin/mold",
 
   # Nightly
@@ -106,34 +100,18 @@ rustflags = [
 
 [target.x86_64-apple-darwin]
 rustflags = [
-  # LLD linker
-  #
-  # The default ld64 linker is faster, you should continue using it instead.
-  #
-  # You may need to install it:
-  #
-  # Brew: `brew install llvm`
-  # Manually: <https://lld.llvm.org/MachO/index.html>
-  # "-Clink-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
-
-  # Nightly
+  # Using default macOS linker (fast enough) and native CPU tuning for local builds
+  "-Ctarget-cpu=native",
+  # Nightly (optional)
   # "-Zshare-generics=y",
   # "-Zthreads=0",
 ]
 
 [target.aarch64-apple-darwin]
 rustflags = [
-  # LLD linker
-  #
-  # The default ld64 linker is faster, you should continue using it instead.
-  #
-  # You may need to install it:
-  #
-  # Brew: `brew install llvm`
-  # Manually: <https://lld.llvm.org/MachO/index.html>
-  # "-Clink-arg=-fuse-ld=/opt/homebrew/opt/llvm/bin/ld64.lld",
-
-  # Nightly
+  # Using default macOS linker (fast enough) and native CPU tuning for local builds
+  "-Ctarget-cpu=native",
+  # Nightly (optional)
   # "-Zshare-generics=y",
   # "-Zthreads=0",
 ]
