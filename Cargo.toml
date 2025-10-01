@@ -13,7 +13,7 @@ getrandom = { version = "0.3.3", features = ["wasm_js"], optional = false }
 
 [features]
 # Keep dev tooling out of release by default
-default = ["dev_native"]
+default = []
 
 dev = [
   "bevy/dynamic_linking",
