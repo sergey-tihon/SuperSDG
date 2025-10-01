@@ -30,7 +30,7 @@ dev_native = [
 [profile.dev]
 opt-level = 0
 incremental = true
-codegen-units = 256
+codegen-units = 32
 
 # Slightly optimize dependencies for runtime smoothness in dev
 [profile.dev.package."*"]
