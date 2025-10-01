@@ -48,10 +48,12 @@ jobs:
 
       - name: Install Trunk (pinned)
         run: |
-          if ! command -v trunk >/dev/null 2>&1 || [[ "$(trunk --version)" != *"${TRUNK_VERSION}"* ]]; then \
-            cargo install trunk --version ${TRUNK_VERSION} --locked; \
-          else \
-            echo "Trunk ${TRUNK_VERSION} already installed"; \
+          if ! command -v trunk >/dev/null 2>&1; then
+            cargo install trunk --version ${TRUNK_VERSION} --locked;
+          elif ! trunk --version | grep -q "${TRUNK_VERSION}"; then
+            cargo install trunk --version ${TRUNK_VERSION} --locked;
+          else
+            echo "Trunk ${TRUNK_VERSION} already installed";
           fi
 
       # wasm-bindgen-cli is fetched automatically by Trunk; install only if you prefer explicit pin
