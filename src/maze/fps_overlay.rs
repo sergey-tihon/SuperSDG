@@ -99,10 +99,10 @@ fn update_text(
     mut writer: TextUiWriter,
 ) {
     for entity in &query {
-        if let Some(fps) = diagnostic.get(&FrameTimeDiagnosticsPlugin::FPS) {
-            if let Some(value) = fps.smoothed() {
-                *writer.text(entity, 1) = format!("{value:.2}");
-            }
+        if let Some(fps) = diagnostic.get(&FrameTimeDiagnosticsPlugin::FPS)
+            && let Some(value) = fps.smoothed()
+        {
+            *writer.text(entity, 1) = format!("{value:.2}");
         }
     }
 }

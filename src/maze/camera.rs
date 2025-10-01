@@ -1,6 +1,6 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use bevy::{prelude::*, render::camera::Viewport, window::WindowResized};
+use bevy::{camera::Viewport, prelude::*, window::WindowResized};
 
 use super::player::PlayerAnimation;
 
@@ -45,23 +45,23 @@ fn setup(mut commands: Commands) {
 
 fn set_camera_viewports(
     windows: Query<&Window>,
-    mut resize_events: EventReader<WindowResized>,
+    mut resize_events: MessageReader<WindowResized>,
     mut main_camera: Query<&mut Camera, With<MainCamera>>,
 ) {
     // We need to dynamically resize the camera's viewports whenever the window size changes
     // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
     for resize_event in resize_events.read() {
-        if let Ok(window) = windows.get(resize_event.window) {
-            if let Ok(mut main_camera) = main_camera.single_mut() {
-                main_camera.viewport = Some(Viewport {
-                    physical_position: UVec2::new(0, 0),
-                    physical_size: UVec2::new(
-                        window.resolution.physical_width(),
-                        window.resolution.physical_height(),
-                    ),
-                    ..default()
-                });
-            }
+        if let Ok(window) = windows.get(resize_event.window)
+            && let Ok(mut main_camera) = main_camera.single_mut()
+        {
+            main_camera.viewport = Some(Viewport {
+                physical_position: UVec2::new(0, 0),
+                physical_size: UVec2::new(
+                    window.resolution.physical_width(),
+                    window.resolution.physical_height(),
+                ),
+                ..default()
+            });
         }
     }
 }
@@ -130,15 +130,15 @@ fn update_camera_position(
     player_position: Query<Ref<Transform>, (With<PlayerAnimation>, Without<MainCamera>)>,
     mut main_camera: Query<&mut Transform, With<MainCamera>>,
 ) {
-    if let Ok(player) = player_position.single() {
-        if camera_settings.is_changed() || player.is_changed() {
-            let camera = get_camera_position(player.translation, &camera_settings);
+    if let Ok(player) = player_position.single()
+        && (camera_settings.is_changed() || player.is_changed())
+    {
+        let camera = get_camera_position(player.translation, &camera_settings);
 
-            // Main camera position update
-            if let Ok(mut main_camera) = main_camera.single_mut() {
-                *main_camera = Transform::from_xyz(camera.x, camera.y, camera.z)
-                    .looking_at(player.translation, Vec3::Y);
-            }
+        // Main camera position update
+        if let Ok(mut main_camera) = main_camera.single_mut() {
+            *main_camera = Transform::from_xyz(camera.x, camera.y, camera.z)
+                .looking_at(player.translation, Vec3::Y);
         }
     }
 }
