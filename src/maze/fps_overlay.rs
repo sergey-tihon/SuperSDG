@@ -25,13 +25,23 @@ impl Plugin for FpsOverlayPlugin {
             app.add_plugins(FrameTimeDiagnosticsPlugin::default());
         }
         app.insert_resource(self.config.clone())
-            .add_systems(Startup, setup.after(super::CameraSwawned))
+            .add_systems(
+                OnEnter(crate::AppState::InGame),
+                setup.after(super::CameraSwawned),
+            )
+            // Show/hide on state transitions
+            .add_systems(
+                OnEnter(crate::AppState::InGame),
+                fps_overlay_show_if_enabled,
+            )
+            .add_systems(OnEnter(crate::AppState::Menu), fps_overlay_hide)
             .add_systems(
                 Update,
                 (
                     (customize_text, toggle_display).run_if(resource_changed::<FpsOverlayConfig>),
                     update_text,
-                ),
+                )
+                    .run_if(in_state(crate::AppState::InGame)),
             );
     }
 }
@@ -63,6 +73,24 @@ impl Default for FpsOverlayConfig {
 
 #[derive(Component)]
 struct FpsText;
+
+fn fps_overlay_show_if_enabled(
+    config: Res<FpsOverlayConfig>,
+    mut q: Query<&mut Visibility, With<FpsText>>,
+) {
+    if !config.enabled {
+        return;
+    }
+    for mut v in &mut q {
+        v.set_if_neq(Visibility::Visible);
+    }
+}
+
+fn fps_overlay_hide(mut q: Query<&mut Visibility, With<FpsText>>) {
+    for mut v in &mut q {
+        v.set_if_neq(Visibility::Hidden);
+    }
+}
 
 fn setup(
     mut commands: Commands,

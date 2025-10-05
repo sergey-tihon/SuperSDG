@@ -2,7 +2,15 @@ use bevy::prelude::*;
 use bevy::window::{PresentMode, WindowMode, WindowResolution, WindowTheme};
 
 mod maze;
+mod menu;
 mod tools;
+
+#[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
+pub enum AppState {
+    #[default]
+    Menu,
+    InGame,
+}
 
 fn main() {
     App::new()
@@ -24,24 +32,8 @@ fn main() {
                 .set(AssetPlugin { ..default() }),
             maze::MazeGamePlugins,
             tools::ToolsPlugins,
+            menu::MenuPlugin,
         ))
-        .add_systems(Update, close_on_esc)
+        .init_state::<AppState>()
         .run();
-}
-
-// TODO: Remove after menu integration
-pub fn close_on_esc(
-    mut commands: Commands,
-    focused_windows: Query<(Entity, &Window)>,
-    input: Res<ButtonInput<KeyCode>>,
-) {
-    for (window, focus) in focused_windows.iter() {
-        if !focus.focused {
-            continue;
-        }
-
-        if input.just_pressed(KeyCode::Escape) {
-            commands.entity(window).despawn();
-        }
-    }
 }

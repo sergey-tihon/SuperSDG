@@ -12,13 +12,18 @@ pub struct HelpOverlayPlugin {
 impl Plugin for HelpOverlayPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.config.clone())
-            .add_systems(Startup, setup.after(super::CameraSwawned))
+            .add_systems(
+                OnEnter(crate::AppState::InGame),
+                setup.after(super::CameraSwawned),
+            )
+            .add_systems(OnExit(crate::AppState::InGame), cleanup_help_overlay)
             .add_systems(
                 Update,
                 (
                     (customize_text, toggle_display).run_if(resource_changed::<HelpOverlayConfig>),
                     toggle_with_f1,
-                ),
+                )
+                    .run_if(in_state(crate::AppState::InGame)),
             );
     }
 }
@@ -51,6 +56,12 @@ impl Default for HelpOverlayConfig {
 #[derive(Component)]
 struct HelpText;
 
+fn cleanup_help_overlay(mut commands: Commands, q: Query<Entity, With<HelpText>>) {
+    for e in &q {
+        commands.entity(e).despawn();
+    }
+}
+
 fn setup(
     mut commands: Commands,
     overlay_config: Res<HelpOverlayConfig>,
@@ -77,9 +88,18 @@ fn setup(
                     TextColor(overlay_config.text_color),
                     HelpText,
                 ))
-                .with_child((TextSpan::new("Movement: Arrow Keys\n"), overlay_config.text_config.clone()))
-                .with_child((TextSpan::new("Camera: Shift + Arrow Keys\n"), overlay_config.text_config.clone()))
-                .with_child((TextSpan::new("Exit: Escape\n"), overlay_config.text_config.clone()));
+                .with_child((
+                    TextSpan::new("Movement: Arrow Keys\n"),
+                    overlay_config.text_config.clone(),
+                ))
+                .with_child((
+                    TextSpan::new("Camera: Shift + Arrow Keys\n"),
+                    overlay_config.text_config.clone(),
+                ))
+                .with_child((
+                    TextSpan::new("Exit: Escape\n"),
+                    overlay_config.text_config.clone(),
+                ));
             });
     }
 }
@@ -134,12 +154,13 @@ mod tests {
         let camera_entity = app.world_mut().spawn(super::super::MainCamera).id();
 
         // Create a system that calls setup and verify it doesn't panic
-        let test_system = move |commands: Commands, 
-                               overlay_config: Res<HelpOverlayConfig>,
-                               camera: Query<Entity, With<super::super::MainCamera>>| {
-            // This should not panic
-            setup(commands, overlay_config, camera);
-        };
+        let test_system =
+            move |commands: Commands,
+                  overlay_config: Res<HelpOverlayConfig>,
+                  camera: Query<Entity, With<super::super::MainCamera>>| {
+                // This should not panic
+                setup(commands, overlay_config, camera);
+            };
 
         // Add and run the test system
         app.add_systems(Update, test_system);
