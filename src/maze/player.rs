@@ -12,8 +12,12 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
-            .add_systems(Update, (keyboard_input_system, animate_player_movement));
+        app.add_systems(OnEnter(crate::AppState::InGame), setup)
+            .add_systems(
+                Update,
+                (keyboard_input_system, animate_player_movement)
+                    .run_if(in_state(crate::AppState::InGame)),
+            );
     }
 }
 
@@ -27,6 +31,9 @@ pub struct PlayerAnimation(Option<AnimationState>);
 
 #[derive(Component)]
 pub struct PressedDirectionIndex(Option<usize>);
+
+#[derive(Component)]
+pub struct ExitPoint;
 
 fn setup(
     mut commands: Commands,
@@ -56,6 +63,7 @@ fn setup(
             ..default()
         })),
         Transform::from_translation(exit.into()),
+        ExitPoint,
     ));
 }
 

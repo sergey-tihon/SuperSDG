@@ -90,7 +90,7 @@ pub struct MazeLevel {
 }
 
 impl MazeLevel {
-    fn new(x: usize, y: usize) -> MazeLevel {
+    pub fn new(x: usize, y: usize) -> MazeLevel {
         let width = (2 * x) + 1;
         let height = (2 * y) + 1;
 
@@ -126,7 +126,10 @@ impl MazeLevel {
             if nx > 0 && ny > 0 {
                 let nx_usize = nx as usize;
                 let ny_usize = ny as usize;
-                if nx_usize < self.width - 1 && ny_usize < self.height - 1 && self.map[ny_usize][nx_usize] == '#' {
+                if nx_usize < self.width - 1
+                    && ny_usize < self.height - 1
+                    && self.map[ny_usize][nx_usize] == '#'
+                {
                     let wall_x = (x as i32 + dx) as usize;
                     let wall_y = (y as i32 + dy) as usize;
                     self.map[wall_y][wall_x] = ' ';

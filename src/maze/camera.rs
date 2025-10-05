@@ -18,7 +18,7 @@ impl Plugin for MazeCameraPlugin {
             Update,
             (
                 set_camera_viewports,
-                keyboard_input_system,
+                keyboard_input_system.run_if(in_state(crate::AppState::InGame)),
                 update_camera_position,
             ),
         );
@@ -39,8 +39,8 @@ pub struct MainCamera;
 // Setup camera objects but without any exact position
 // Proper position will be calculated by `CameraChangedEvent` handler
 fn setup(mut commands: Commands) {
-    // Main camera
-    commands.spawn(MainCamera);
+    // Main camera (spawn 3D camera component so UI can target it)
+    let _ = commands.spawn((Camera3d::default(), MainCamera)).id();
 }
 
 fn set_camera_viewports(
