@@ -40,7 +40,12 @@ fn setup(
     level: Res<MazeLevel>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
+    existing_player: Query<Entity, With<PlayerAnimation>>,
 ) {
+    if existing_player.single().is_ok() {
+        return;
+    }
+
     // Add Player
     let start = level.player_position;
     commands.spawn((
