@@ -140,11 +140,14 @@ impl MazeLevel {
         }
     }
 
+    /// Returns random start and exit positions using BFS to find maximum distance.
+    /// Uses coordinate convention: (x, y) where x=column, y=row.
+    /// Map access is map[y][x] and visited array is accessed as visited[y][x].
     fn random_player_and_exit_positions(&self) -> ((usize, usize), (usize, usize)) {
         fn bfs(maze: &MazeLevel, start_x: usize, start_y: usize) -> ((usize, usize), usize) {
-            let mut visited = vec![vec![false; maze.height]; maze.width];
+            let mut visited = vec![vec![false; maze.width]; maze.height];
             let mut queue = VecDeque::new();
-            visited[start_x][start_y] = true;
+            visited[start_y][start_x] = true;
             queue.push_back((start_x, start_y, 0));
 
             let mut max_distance = 0;
@@ -160,9 +163,9 @@ impl MazeLevel {
                         if nx_usize < maze.width
                             && ny_usize < maze.height
                             && maze.map[ny_usize][nx_usize] == ' '
-                            && !visited[nx_usize][ny_usize]
+                            && !visited[ny_usize][nx_usize]
                         {
-                            visited[nx_usize][ny_usize] = true;
+                            visited[ny_usize][nx_usize] = true;
                             queue.push_back((nx_usize, ny_usize, dist + 1));
                             if dist + 1 > max_distance {
                                 max_distance = dist + 1;
