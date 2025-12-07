@@ -128,9 +128,9 @@ fn update_text(
 ) {
     for entity in &query {
         if let Some(fps) = diagnostic.get(&FrameTimeDiagnosticsPlugin::FPS)
-            && let Some(value) = fps.smoothed()
+            && let Some(value) = fps.average()
         {
-            *writer.text(entity, 1) = format!("{value:.2}");
+            *writer.text(entity, 1) = format!("{value:.0}");
         }
     }
 }
