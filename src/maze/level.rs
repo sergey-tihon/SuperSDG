@@ -90,7 +90,7 @@ pub struct MazeLevel {
 }
 
 impl MazeLevel {
-    fn new(x: usize, y: usize) -> MazeLevel {
+    pub fn new(x: usize, y: usize) -> MazeLevel {
         let width = (2 * x) + 1;
         let height = (2 * y) + 1;
 
