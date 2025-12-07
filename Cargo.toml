@@ -12,30 +12,29 @@ getrandom = { version = "0.3.4", features = ["wasm_js"], optional = false }
 
 
 [features]
-default = [
-  # Default to a native dev build.
-  "dev_native",
-]
+# Keep dev tooling out of release by default
+default = []
+
 dev = [
-  # Improve compile times for dev builds by linking Bevy as a dynamic library.
   "bevy/dynamic_linking",
   "bevy/bevy_dev_tools",
 ]
+
 dev_native = [
   "dev",
-  # Enable asset hot reloading for native dev builds.
   "bevy/file_watcher",
-  # Enable embedded asset hot reloading for native dev builds.
   "bevy/embedded_watcher",
 ]
 
-# Enable only a small amount of optimization in debug mode
+# Development profile tuned for fast incremental builds
 [profile.dev]
-opt-level = 1
+opt-level = 0
+incremental = true
+codegen-units = 32
 
-# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+# Slightly optimize dependencies for runtime smoothness in dev
 [profile.dev.package."*"]
-opt-level = 3
+opt-level = 2
 
 # Remove expensive debug assertions due to <https://github.com/bevyengine/bevy/issues/14291>
 [profile.dev.package.wgpu-types]
@@ -45,23 +44,16 @@ debug-assertions = false
 # that's what [Trunk reads](https://github.com/trunk-rs/trunk/issues/605).
 # Optimize for size in the wasm-release profile to reduce load times and bandwidth usage on web.
 [profile.release]
-# Compile the entire crate as one unit.
-# Slows compile times, marginal improvements.
 codegen-units = 1
-# Do a second optimization pass over the entire program, including dependencies.
-# Slows compile times, marginal improvements.
 lto = "thin"
-# Optimize with size in mind (also try "z", sometimes it is better).
-# Slightly slows compile times, great improvements to file size and runtime performance.
 opt-level = "s"
-# Strip all debugging information from the binary to slightly reduce file size.
 strip = "debuginfo"
+panic = "abort"
 
 # Override some settings for native builds.
 [profile.release-native]
-# Default to release profile values.
 inherits = "release"
-# Optimize with performance in mind.
 opt-level = 3
-# Keep debug information in the binary.
-strip = "none"
+lto = "thin"
+strip = "symbols"
+panic = "abort"
