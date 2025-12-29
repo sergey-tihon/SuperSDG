@@ -52,6 +52,8 @@ jobs:
         if: steps.cache-trunk.outputs.cache-hit != 'true'
         run: cargo install trunk --version ${{ env.TRUNK_VERSION }} --locked
 
+      - name: Sanity check (wasm32)
+        run: cargo check --locked --target wasm32-unknown-unknown
       - name: Build release (Trunk)
         run: trunk build --release
 
