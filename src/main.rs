@@ -6,19 +6,24 @@ mod core;
 mod maze;
 mod tools;
 
-use core::AppState;
 use core::menu::{
     EscToPausePlugin, MenuAction, MenuDef, MenuItem, MenuPlugin, PauseMenuPlugin, StartMenuPlugin,
 };
+use core::{AppState, GameSettings};
+
+/// Flag to indicate a new game was requested (vs resuming from pause)
+#[derive(Resource, Default)]
+struct NewGameRequested(bool);
 
 fn main() {
     let mut app = App::new();
 
-    // Register restart system to get SystemId
+    // Register systems to get SystemIds
+    let new_game_system_id = app.register_system(new_game);
     let restart_system_id = app.register_system(restart_game);
 
     // Build menu definitions
-    let start_menu = build_start_menu();
+    let start_menu = build_start_menu(new_game_system_id);
     let pause_menu = build_pause_menu(restart_system_id);
 
     app.add_plugins((
@@ -49,15 +54,26 @@ fn main() {
         },
         EscToPausePlugin,
     ))
+    .init_resource::<GameSettings>()
+    .init_resource::<NewGameRequested>()
     .init_state::<AppState>()
+    .add_systems(OnEnter(AppState::InGame), apply_complexity)
     .run();
 }
 
-fn build_start_menu() -> MenuDef {
+fn build_start_menu(new_game_system_id: SystemId) -> MenuDef {
     let mut items = vec![MenuItem {
         label: "New Game".to_string(),
-        action: MenuAction::ChangeState(AppState::InGame),
+        action: MenuAction::RunSystem {
+            system: new_game_system_id,
+            next_state: Some(AppState::InGame),
+        },
     }];
+
+    items.push(MenuItem {
+        label: "Size: 30x30".to_string(), // Label updated dynamically
+        action: MenuAction::CycleComplexity,
+    });
 
     #[cfg(not(target_arch = "wasm32"))]
     items.push(MenuItem {
@@ -81,6 +97,10 @@ fn build_pause_menu(restart_system_id: SystemId) -> MenuDef {
                 next_state: Some(AppState::InGame),
             },
         },
+        MenuItem {
+            label: "Size: 30x30".to_string(), // Label updated dynamically
+            action: MenuAction::CycleComplexity,
+        },
     ];
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -92,6 +112,27 @@ fn build_pause_menu(restart_system_id: SystemId) -> MenuDef {
     MenuDef { items }
 }
 
-fn restart_game(mut level: ResMut<maze::MazeLevel>) {
-    level.regenerate();
+fn new_game(mut new_game_requested: ResMut<NewGameRequested>) {
+    new_game_requested.0 = true;
+}
+
+fn restart_game(mut level: ResMut<maze::MazeLevel>, settings: Res<GameSettings>) {
+    let (x, y) = settings.complexity.maze_size();
+    level.regenerate_with_size(x, y);
+}
+
+fn apply_complexity(
+    mut level: ResMut<maze::MazeLevel>,
+    settings: Res<GameSettings>,
+    mut new_game_requested: ResMut<NewGameRequested>,
+) {
+    if !new_game_requested.0 {
+        return;
+    }
+    new_game_requested.0 = false;
+
+    let (x, y) = settings.complexity.maze_size();
+    if level.dimensions() != (x, y) {
+        level.regenerate_with_size(x, y);
+    }
 }

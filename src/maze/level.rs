@@ -194,9 +194,11 @@ impl MazeLevel {
         ((start_x, start_y), exit)
     }
 
-    /// Regenerates the maze with a new layout.
+    /// Regenerates the maze with new dimensions.
     /// Increments the generation counter to trigger reactive systems.
-    pub fn regenerate(&mut self) {
+    pub fn regenerate_with_size(&mut self, x: usize, y: usize) {
+        self.width = (2 * x) + 1;
+        self.height = (2 * y) + 1;
         self.map = vec![vec!['#'; self.width]; self.height];
         self.generate_maze(1, 1);
 
@@ -205,6 +207,12 @@ impl MazeLevel {
         self.exit_position = Vec2i::new(exit);
 
         self.generation += 1;
+    }
+
+    /// Returns the logical maze dimensions (x, y), not the grid dimensions.
+    /// For a maze created with `new(20, 20)`, this returns `(20, 20)`.
+    pub fn dimensions(&self) -> (usize, usize) {
+        ((self.width - 1) / 2, (self.height - 1) / 2)
     }
 
     /// Safely checks if a cell is empty, returning false if out of bounds or negative.
@@ -333,5 +341,56 @@ mod test {
                 );
             }
         }
+    }
+
+    #[test]
+    fn dimensions_returns_logical_size() {
+        let level = MazeLevel::new(20, 20);
+        assert_eq!(level.dimensions(), (20, 20));
+
+        let level = MazeLevel::new(40, 40);
+        assert_eq!(level.dimensions(), (40, 40));
+
+        let level = MazeLevel::new(60, 60);
+        assert_eq!(level.dimensions(), (60, 60));
+    }
+
+    #[test]
+    fn regenerate_with_size_changes_dimensions() {
+        let mut level = MazeLevel::new(20, 20);
+        assert_eq!(level.dimensions(), (20, 20));
+        assert_eq!(level.width, 41);
+        assert_eq!(level.height, 41);
+
+        let old_generation = level.generation;
+        level.regenerate_with_size(40, 40);
+
+        assert_eq!(level.dimensions(), (40, 40));
+        assert_eq!(level.width, 81);
+        assert_eq!(level.height, 81);
+        assert_eq!(level.generation, old_generation + 1);
+
+        // Verify player is in valid position
+        let player_pos = level.player_position;
+        assert!(level.is_cell_empty(player_pos));
+    }
+
+    #[test]
+    fn regenerate_with_size_creates_valid_maze() {
+        let mut level = MazeLevel::new(20, 20);
+        level.regenerate_with_size(30, 30);
+
+        // Borders should be walls
+        for (z, s) in level.map.iter().enumerate() {
+            for (x, &c) in s.iter().enumerate() {
+                if z == 0 || x == 0 || z == level.map.len() - 1 || x == s.len() - 1 {
+                    assert_eq!(c, '#', "Border at ({}, {}) should be wall", x, z);
+                }
+            }
+        }
+
+        // Player and exit should be in empty cells
+        assert!(level.is_cell_empty(level.player_position));
+        assert!(level.is_cell_empty(level.exit_position));
     }
 }

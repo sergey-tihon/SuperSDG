@@ -1,7 +1,7 @@
 use bevy::ecs::system::SystemId;
 use bevy::prelude::*;
 
-use super::AppState;
+use super::{AppState, GameSettings};
 
 pub const MENU_ZINDEX: i32 = i32::MAX - 10;
 
@@ -19,6 +19,8 @@ pub enum MenuAction {
         system: SystemId,
         next_state: Option<AppState>,
     },
+    /// Cycle through complexity levels
+    CycleComplexity,
     /// Exit the application (non-WASM only)
     #[cfg(not(target_arch = "wasm32"))]
     Exit,
@@ -75,6 +77,10 @@ struct MenuCamera;
 /// Component on each menu item storing its index
 #[derive(Component)]
 struct MenuItemIndex(usize);
+
+/// Marker component for complexity menu items (for dynamic label updates)
+#[derive(Component)]
+pub struct ComplexityMenuItem;
 
 /// Stores the menu definition for a specific state
 #[derive(Resource, Clone)]
@@ -172,11 +178,12 @@ fn setup_start_menu(
     asset_server: Res<AssetServer>,
     config: Res<MenuConfig>,
     items: Res<StartMenuItems>,
+    settings: Res<GameSettings>,
     mut selection: ResMut<MenuSelection>,
 ) {
     selection.0 = 0;
     commands.insert_resource(ActiveMenuItems(items.0.clone()));
-    spawn_menu(&mut commands, &asset_server, &config, &items.0);
+    spawn_menu(&mut commands, &asset_server, &config, &items.0, &settings);
 }
 
 fn setup_pause_menu(
@@ -184,11 +191,12 @@ fn setup_pause_menu(
     asset_server: Res<AssetServer>,
     config: Res<MenuConfig>,
     items: Res<PauseMenuItems>,
+    settings: Res<GameSettings>,
     mut selection: ResMut<MenuSelection>,
 ) {
     selection.0 = 0;
     commands.insert_resource(ActiveMenuItems(items.0.clone()));
-    spawn_menu(&mut commands, &asset_server, &config, &items.0);
+    spawn_menu(&mut commands, &asset_server, &config, &items.0, &settings);
 }
 
 fn spawn_menu(
@@ -196,6 +204,7 @@ fn spawn_menu(
     asset_server: &Res<AssetServer>,
     config: &Res<MenuConfig>,
     items: &[MenuItem],
+    settings: &Res<GameSettings>,
 ) {
     // Spawn dedicated 2D camera for menu UI
     let camera_entity = commands
@@ -236,8 +245,14 @@ fn spawn_menu(
                 })
                 .with_children(|col| {
                     for (idx, item) in items.iter().enumerate() {
-                        col.spawn((
-                            Text::new(&item.label),
+                        let label = if matches!(item.action, MenuAction::CycleComplexity) {
+                            format!("Size: {}", settings.complexity.label())
+                        } else {
+                            item.label.clone()
+                        };
+
+                        let mut entity_commands = col.spawn((
+                            Text::new(&label),
                             TextFont {
                                 font: asset_server.load(&config.font_path),
                                 font_size: config.font_size,
@@ -250,6 +265,10 @@ fn spawn_menu(
                             }),
                             MenuItemIndex(idx),
                         ));
+
+                        if matches!(item.action, MenuAction::CycleComplexity) {
+                            entity_commands.insert(ComplexityMenuItem);
+                        }
                     }
                 });
         });
@@ -284,12 +303,15 @@ fn navigate_menu(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn activate_menu(
     keys: Res<ButtonInput<KeyCode>>,
     selection: Res<MenuSelection>,
     items: Res<ActiveMenuItems>,
     mut next_state: ResMut<NextState<AppState>>,
     mut commands: Commands,
+    mut settings: ResMut<GameSettings>,
+    mut complexity_query: Query<&mut Text, With<ComplexityMenuItem>>,
     #[cfg(not(target_arch = "wasm32"))] windows: Query<(Entity, &Window)>,
 ) {
     if !(keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space)) {
@@ -311,6 +333,12 @@ fn activate_menu(
             commands.run_system(*system);
             if let Some(s) = state {
                 next_state.set(s.clone());
+            }
+        }
+        MenuAction::CycleComplexity => {
+            settings.complexity = settings.complexity.next();
+            for mut text in &mut complexity_query {
+                **text = format!("Size: {}", settings.complexity.label());
             }
         }
         #[cfg(not(target_arch = "wasm32"))]
