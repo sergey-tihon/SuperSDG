@@ -13,17 +13,18 @@ impl Plugin for HelpOverlayPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.config.clone())
             .add_systems(
-                OnEnter(crate::AppState::InGame),
+                OnEnter(crate::core::AppState::InGame),
                 setup.after(super::CameraSwawned),
             )
-            .add_systems(OnExit(crate::AppState::InGame), cleanup_help_overlay)
+            .add_systems(OnExit(crate::core::AppState::InGame), cleanup_help_overlay)
+            .add_systems(OnEnter(crate::core::AppState::Paused), cleanup_help_overlay)
             .add_systems(
                 Update,
                 (
                     (customize_text, toggle_display).run_if(resource_changed::<HelpOverlayConfig>),
                     toggle_with_f1,
                 )
-                    .run_if(in_state(crate::AppState::InGame)),
+                    .run_if(in_state(crate::core::AppState::InGame)),
             );
     }
 }
@@ -97,7 +98,7 @@ fn setup(
                     overlay_config.text_config.clone(),
                 ))
                 .with_child((
-                    TextSpan::new("Exit: Escape\n"),
+                    TextSpan::new("Menu: Escape\n"),
                     overlay_config.text_config.clone(),
                 ));
             });

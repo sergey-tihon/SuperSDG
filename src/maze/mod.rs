@@ -23,7 +23,6 @@ pub struct CameraSwawned;
 
 pub use camera::MainCamera;
 pub use level::MazeLevel;
-pub use player::{ExitPoint, PlayerAnimation};
 
 pub struct MazeGamePlugins;
 

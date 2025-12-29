@@ -12,14 +12,23 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(crate::AppState::InGame), setup)
+        app.insert_resource(PlayerTrackedGeneration(None))
+            .add_systems(OnEnter(crate::core::AppState::InGame), setup)
             .add_systems(
                 Update,
-                (keyboard_input_system, animate_player_movement)
-                    .run_if(in_state(crate::AppState::InGame)),
+                (
+                    sync_positions_on_maze_change,
+                    keyboard_input_system,
+                    animate_player_movement,
+                )
+                    .run_if(in_state(crate::core::AppState::InGame)),
             );
     }
 }
+
+/// Tracks which maze generation the player/exit positions have been synced for.
+#[derive(Resource)]
+struct PlayerTrackedGeneration(Option<u32>);
 
 pub struct AnimationState {
     time: f32,
@@ -70,6 +79,26 @@ fn setup(
         Transform::from_translation(exit.into()),
         ExitPoint,
     ));
+}
+
+fn sync_positions_on_maze_change(
+    level: Res<MazeLevel>,
+    mut tracked: ResMut<PlayerTrackedGeneration>,
+    mut player_query: Query<(&mut Transform, &mut PlayerAnimation), Without<ExitPoint>>,
+    mut exit_query: Query<&mut Transform, With<ExitPoint>>,
+) {
+    if tracked.0 != Some(level.generation) {
+        tracked.0 = Some(level.generation);
+
+        if let Ok((mut transform, mut animation)) = player_query.single_mut() {
+            transform.translation = level.player_position.into();
+            animation.0 = None; // Cancel any in-progress animation
+        }
+
+        if let Ok(mut transform) = exit_query.single_mut() {
+            transform.translation = level.exit_position.into();
+        }
+    }
 }
 
 fn keyboard_input_system(

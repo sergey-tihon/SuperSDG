@@ -2,23 +2,29 @@ use std::f32::consts::{FRAC_PI_2, PI};
 
 use bevy::{camera::Viewport, prelude::*, window::WindowResized};
 
-use super::player::PlayerAnimation;
+use super::{level::MazeLevel, player::PlayerAnimation};
 
 pub struct MazeCameraPlugin;
+
+const DEFAULT_HEIGHT: f32 = 15.0;
+const DEFAULT_RADIUS: f32 = 20.0;
+const DEFAULT_ANGLE: f32 = FRAC_PI_2;
 
 impl Plugin for MazeCameraPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(CameraSettings {
-            height: 15.0,
-            radius: 20.0,
-            angle: FRAC_PI_2,
+            height: DEFAULT_HEIGHT,
+            radius: DEFAULT_RADIUS,
+            angle: DEFAULT_ANGLE,
         })
+        .insert_resource(CameraTrackedGeneration(None))
         .add_systems(Startup, setup.in_set(super::CameraSwawned))
         .add_systems(
             Update,
             (
                 set_camera_viewports,
-                keyboard_input_system.run_if(in_state(crate::AppState::InGame)),
+                reset_camera_on_maze_change,
+                keyboard_input_system.run_if(in_state(crate::core::AppState::InGame)),
                 update_camera_position,
             ),
         );
@@ -31,6 +37,10 @@ pub struct CameraSettings {
     pub radius: f32,
     pub angle: f32,
 }
+
+/// Tracks which maze generation the camera has been reset for.
+#[derive(Resource)]
+struct CameraTrackedGeneration(Option<u32>);
 
 #[derive(Component)]
 #[require(Camera3d)]
@@ -63,6 +73,19 @@ fn set_camera_viewports(
                 ..default()
             });
         }
+    }
+}
+
+fn reset_camera_on_maze_change(
+    level: Res<MazeLevel>,
+    mut tracked: ResMut<CameraTrackedGeneration>,
+    mut camera_settings: ResMut<CameraSettings>,
+) {
+    if tracked.0 != Some(level.generation) {
+        tracked.0 = Some(level.generation);
+        camera_settings.height = DEFAULT_HEIGHT;
+        camera_settings.radius = DEFAULT_RADIUS;
+        camera_settings.angle = DEFAULT_ANGLE;
     }
 }
 

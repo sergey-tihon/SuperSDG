@@ -87,6 +87,9 @@ pub struct MazeLevel {
     pub map: Vec<Vec<char>>,
     pub player_position: Vec2i,
     pub exit_position: Vec2i,
+    /// Generation counter, incremented on each maze regeneration.
+    /// Used by reactive systems to detect maze changes.
+    pub generation: u32,
 }
 
 impl MazeLevel {
@@ -100,6 +103,7 @@ impl MazeLevel {
             map: vec![vec!['#'; width]; height],
             player_position: Vec2i(0, 0),
             exit_position: Vec2i(0, 0),
+            generation: 0,
         };
 
         maze.generate_maze(1, 1);
@@ -188,6 +192,19 @@ impl MazeLevel {
         let (exit, _) = bfs(self, start_x, start_y);
 
         ((start_x, start_y), exit)
+    }
+
+    /// Regenerates the maze with a new layout.
+    /// Increments the generation counter to trigger reactive systems.
+    pub fn regenerate(&mut self) {
+        self.map = vec![vec!['#'; self.width]; self.height];
+        self.generate_maze(1, 1);
+
+        let (start, exit) = self.random_player_and_exit_positions();
+        self.player_position = Vec2i::new(start);
+        self.exit_position = Vec2i::new(exit);
+
+        self.generation += 1;
     }
 
     /// Safely checks if a cell is empty, returning false if out of bounds or negative.

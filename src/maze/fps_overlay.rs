@@ -26,22 +26,23 @@ impl Plugin for FpsOverlayPlugin {
         }
         app.insert_resource(self.config.clone())
             .add_systems(
-                OnEnter(crate::AppState::InGame),
+                OnEnter(crate::core::AppState::InGame),
                 setup.after(super::CameraSwawned),
             )
             // Show/hide on state transitions
             .add_systems(
-                OnEnter(crate::AppState::InGame),
+                OnEnter(crate::core::AppState::InGame),
                 fps_overlay_show_if_enabled,
             )
-            .add_systems(OnEnter(crate::AppState::Menu), fps_overlay_hide)
+            .add_systems(OnEnter(crate::core::AppState::Menu), fps_overlay_hide)
+            .add_systems(OnEnter(crate::core::AppState::Paused), fps_overlay_hide)
             .add_systems(
                 Update,
                 (
                     (customize_text, toggle_display).run_if(resource_changed::<FpsOverlayConfig>),
                     update_text,
                 )
-                    .run_if(in_state(crate::AppState::InGame)),
+                    .run_if(in_state(crate::core::AppState::InGame)),
             );
     }
 }
