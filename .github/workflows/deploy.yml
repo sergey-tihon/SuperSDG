@@ -31,7 +31,8 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      # Unified Rust caching (target + registry + git)
+      # Unified Rust caching (target + registry + git + bin)
+      # rust-cache handles ~/.cargo/bin by default, including trunk binary
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
         with:
@@ -39,18 +40,16 @@ jobs:
           shared-key: trunk-${{ env.TRUNK_VERSION }}
           cache-targets: true
           cache-on-failure: true
-
-      # Cache trunk binary separately for faster cache hit detection
-      - name: Cache Trunk binary
-        id: cache-trunk
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/bin/trunk
-          key: trunk-${{ runner.os }}-${{ env.TRUNK_VERSION }}
+          cache-all-crates: "true"
 
       - name: Install Trunk
-        if: steps.cache-trunk.outputs.cache-hit != 'true'
-        run: cargo install trunk --version ${{ env.TRUNK_VERSION }} --locked
+        run: |
+          if command -v trunk &> /dev/null && [[ "$(trunk --version)" == *"${{ env.TRUNK_VERSION }}"* ]]; then
+            echo "Trunk ${{ env.TRUNK_VERSION }} already installed (from cache)"
+          else
+            echo "Installing Trunk ${{ env.TRUNK_VERSION }}..."
+            cargo install trunk --version ${{ env.TRUNK_VERSION }} --locked
+          fi
 
       - name: Sanity check (wasm32)
         run: cargo check --locked --target wasm32-unknown-unknown
