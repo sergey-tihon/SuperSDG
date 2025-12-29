@@ -343,11 +343,11 @@ fn esc_in_start_menu(
     #[cfg(not(target_arch = "wasm32"))] windows: Query<(Entity, &Window)>,
     #[cfg(not(target_arch = "wasm32"))] mut commands: Commands,
 ) {
-    if !keys.just_pressed(KeyCode::Escape) {
+    if !keys.just_pressed(KeyCode::Escape) && !keys.just_pressed(KeyCode::KeyQ) {
         return;
     }
 
-    // ESC in main menu -> exit (non-WASM only)
+    // ESC/Q in main menu -> exit (non-WASM only)
     #[cfg(not(target_arch = "wasm32"))]
     for (entity, window) in &windows {
         if window.focused {
@@ -357,13 +357,13 @@ fn esc_in_start_menu(
 }
 
 fn esc_in_pause_menu(keys: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<AppState>>) {
-    if keys.just_pressed(KeyCode::Escape) {
+    if keys.just_pressed(KeyCode::Escape) || keys.just_pressed(KeyCode::KeyQ) {
         next_state.set(AppState::InGame);
     }
 }
 
 fn esc_to_pause(keys: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<AppState>>) {
-    if keys.just_pressed(KeyCode::Escape) {
+    if keys.just_pressed(KeyCode::Escape) || keys.just_pressed(KeyCode::KeyQ) {
         next_state.set(AppState::Paused);
     }
 }

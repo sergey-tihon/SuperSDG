@@ -96,7 +96,7 @@ fn setup(
                 overlay_config.text_config.clone(),
             ))
             .with_child((
-                TextSpan::new("Menu: Escape\n"),
+                TextSpan::new("Menu: Escape / Q\n"),
                 overlay_config.text_config.clone(),
             ));
         });
