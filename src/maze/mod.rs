@@ -1,6 +1,6 @@
 use bevy::{
     app::PluginGroupBuilder,
-    prelude::{PluginGroup, SystemSet},
+    prelude::{Component, PluginGroup, SystemSet},
 };
 
 use self::{
@@ -21,7 +21,14 @@ pub mod player;
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct CameraSwawned;
 
-pub use camera::MainCamera;
+/// SystemSet that marks the overlay camera as spawned
+#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
+pub struct OverlayCameraSpawned;
+
+/// Shared 2D camera for all overlays (FPS, help, etc.)
+#[derive(Component)]
+pub struct OverlayCamera;
+
 pub use level::MazeLevel;
 
 pub struct MazeGamePlugins;
