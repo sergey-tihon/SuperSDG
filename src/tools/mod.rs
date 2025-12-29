@@ -7,6 +7,7 @@ pub struct ToolsPlugins;
 
 impl PluginGroup for ToolsPlugins {
     fn build(self) -> bevy::app::PluginGroupBuilder {
+        #[allow(unused_mut)]
         let mut group = PluginGroupBuilder::start::<Self>();
         #[cfg(feature = "dev")]
         {

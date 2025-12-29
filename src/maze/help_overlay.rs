@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use super::{OverlayCamera, OverlayCameraSpawned};
+
 pub const HELP_OVERLAY_ZINDEX: i32 = i32::MAX - 31; // Just above FPS overlay
 
 /// A plugin that adds a help overlay to display control hotkeys.
@@ -12,12 +14,9 @@ pub struct HelpOverlayPlugin {
 impl Plugin for HelpOverlayPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(self.config.clone())
-            .add_systems(
-                OnEnter(crate::core::AppState::InGame),
-                setup.after(super::CameraSwawned),
-            )
-            .add_systems(OnExit(crate::core::AppState::InGame), cleanup_help_overlay)
-            .add_systems(OnEnter(crate::core::AppState::Paused), cleanup_help_overlay)
+            .add_systems(Startup, setup.after(OverlayCameraSpawned))
+            .add_systems(OnEnter(crate::core::AppState::InGame), show_overlay)
+            .add_systems(OnExit(crate::core::AppState::InGame), hide_overlay)
             .add_systems(
                 Update,
                 (
@@ -57,51 +56,61 @@ impl Default for HelpOverlayConfig {
 #[derive(Component)]
 struct HelpText;
 
-fn cleanup_help_overlay(mut commands: Commands, q: Query<Entity, With<HelpText>>) {
-    for e in &q {
-        commands.entity(e).despawn();
-    }
-}
+#[derive(Component)]
+struct HelpOverlayRoot;
 
 fn setup(
     mut commands: Commands,
     overlay_config: Res<HelpOverlayConfig>,
-    camera: Query<Entity, With<super::MainCamera>>,
+    camera: Query<Entity, With<OverlayCamera>>,
 ) {
-    if let Ok(camera) = camera.single() {
-        commands
-            .spawn((
-                UiTargetCamera(camera),
-                Node {
-                    // Position the overlay in the bottom left corner
-                    position_type: PositionType::Absolute,
-                    bottom: Val::Px(10.0),
-                    left: Val::Px(10.0),
-                    ..default()
-                },
-                // Render overlay on top of everything
-                GlobalZIndex(HELP_OVERLAY_ZINDEX),
+    let Ok(camera) = camera.single() else {
+        return;
+    };
+    commands
+        .spawn((
+            UiTargetCamera(camera),
+            Node {
+                position_type: PositionType::Absolute,
+                bottom: Val::Px(10.0),
+                left: Val::Px(10.0),
+                ..default()
+            },
+            GlobalZIndex(HELP_OVERLAY_ZINDEX),
+            Visibility::Hidden, // Start hidden, show on InGame
+            HelpOverlayRoot,
+        ))
+        .with_children(|p| {
+            p.spawn((
+                Text::new("Help: F1\n"),
+                overlay_config.text_config.clone(),
+                TextColor(overlay_config.text_color),
+                HelpText,
             ))
-            .with_children(|p| {
-                p.spawn((
-                    Text::new("Help: F1\n"),
-                    overlay_config.text_config.clone(),
-                    TextColor(overlay_config.text_color),
-                    HelpText,
-                ))
-                .with_child((
-                    TextSpan::new("Movement: Arrow Keys\n"),
-                    overlay_config.text_config.clone(),
-                ))
-                .with_child((
-                    TextSpan::new("Camera: Shift + Arrow Keys\n"),
-                    overlay_config.text_config.clone(),
-                ))
-                .with_child((
-                    TextSpan::new("Menu: Escape\n"),
-                    overlay_config.text_config.clone(),
-                ));
-            });
+            .with_child((
+                TextSpan::new("Movement: Arrow Keys\n"),
+                overlay_config.text_config.clone(),
+            ))
+            .with_child((
+                TextSpan::new("Camera: Shift + Arrow Keys\n"),
+                overlay_config.text_config.clone(),
+            ))
+            .with_child((
+                TextSpan::new("Menu: Escape / Q\n"),
+                overlay_config.text_config.clone(),
+            ));
+        });
+}
+
+fn show_overlay(mut query: Query<&mut Visibility, With<HelpOverlayRoot>>) {
+    for mut visibility in &mut query {
+        *visibility = Visibility::Visible;
+    }
+}
+
+fn hide_overlay(mut query: Query<&mut Visibility, With<HelpOverlayRoot>>) {
+    for mut visibility in &mut query {
+        *visibility = Visibility::Hidden;
     }
 }
 
@@ -151,14 +160,14 @@ mod tests {
         // Add necessary resources and plugins
         app.insert_resource(HelpOverlayConfig::default());
 
-        // Add a mock camera entity with MainCamera component
-        let camera_entity = app.world_mut().spawn(super::super::MainCamera).id();
+        // Add a mock camera entity with OverlayCamera component
+        let camera_entity = app.world_mut().spawn(OverlayCamera).id();
 
         // Create a system that calls setup and verify it doesn't panic
         let test_system =
             move |commands: Commands,
                   overlay_config: Res<HelpOverlayConfig>,
-                  camera: Query<Entity, With<super::super::MainCamera>>| {
+                  camera: Query<Entity, With<OverlayCamera>>| {
                 // This should not panic
                 setup(commands, overlay_config, camera);
             };

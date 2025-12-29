@@ -3,6 +3,8 @@ use bevy::{
     prelude::*,
 };
 
+use super::{OverlayCamera, OverlayCameraSpawned};
+
 pub const FPS_OVERLAY_ZINDEX: i32 = i32::MAX - 32;
 
 /// A plugin that adds an FPS overlay to the Bevy application.
@@ -25,24 +27,13 @@ impl Plugin for FpsOverlayPlugin {
             app.add_plugins(FrameTimeDiagnosticsPlugin::default());
         }
         app.insert_resource(self.config.clone())
-            .add_systems(
-                OnEnter(crate::core::AppState::InGame),
-                setup.after(super::CameraSwawned),
-            )
-            // Show/hide on state transitions
-            .add_systems(
-                OnEnter(crate::core::AppState::InGame),
-                fps_overlay_show_if_enabled,
-            )
-            .add_systems(OnEnter(crate::core::AppState::Menu), fps_overlay_hide)
-            .add_systems(OnEnter(crate::core::AppState::Paused), fps_overlay_hide)
+            .add_systems(Startup, setup_global.in_set(OverlayCameraSpawned))
             .add_systems(
                 Update,
                 (
                     (customize_text, toggle_display).run_if(resource_changed::<FpsOverlayConfig>),
                     update_text,
-                )
-                    .run_if(in_state(crate::core::AppState::InGame)),
+                ),
             );
     }
 }
@@ -75,51 +66,38 @@ impl Default for FpsOverlayConfig {
 #[derive(Component)]
 struct FpsText;
 
-fn fps_overlay_show_if_enabled(
-    config: Res<FpsOverlayConfig>,
-    mut q: Query<&mut Visibility, With<FpsText>>,
-) {
-    if !config.enabled {
-        return;
-    }
-    for mut v in &mut q {
-        v.set_if_neq(Visibility::Visible);
-    }
-}
+fn setup_global(mut commands: Commands, overlay_config: Res<FpsOverlayConfig>) {
+    // Spawn a dedicated 2D camera for all overlays that renders on top
+    let camera_entity = commands
+        .spawn((
+            Camera2d,
+            Camera {
+                order: 1000, // Render on top of everything
+                clear_color: ClearColorConfig::None,
+                ..default()
+            },
+            OverlayCamera,
+        ))
+        .id();
 
-fn fps_overlay_hide(mut q: Query<&mut Visibility, With<FpsText>>) {
-    for mut v in &mut q {
-        v.set_if_neq(Visibility::Hidden);
-    }
-}
-
-fn setup(
-    mut commands: Commands,
-    overlay_config: Res<FpsOverlayConfig>,
-    camera: Query<Entity, With<super::MainCamera>>,
-) {
-    if let Ok(camera) = camera.single() {
-        commands
-            .spawn((
-                UiTargetCamera(camera),
-                Node {
-                    // We need to make sure the overlay doesn't affect the position of other UI nodes
-                    position_type: PositionType::Absolute,
-                    ..default()
-                },
-                // Render overlay on top of everything
-                GlobalZIndex(FPS_OVERLAY_ZINDEX),
+    commands
+        .spawn((
+            UiTargetCamera(camera_entity),
+            Node {
+                position_type: PositionType::Absolute,
+                ..default()
+            },
+            GlobalZIndex(FPS_OVERLAY_ZINDEX),
+        ))
+        .with_children(|p| {
+            p.spawn((
+                Text::new("FPS: "),
+                overlay_config.text_config.clone(),
+                TextColor(overlay_config.text_color),
+                FpsText,
             ))
-            .with_children(|p| {
-                p.spawn((
-                    Text::new("FPS: "),
-                    overlay_config.text_config.clone(),
-                    TextColor(overlay_config.text_color),
-                    FpsText,
-                ))
-                .with_child((TextSpan::default(), overlay_config.text_config.clone()));
-            });
-    }
+            .with_child((TextSpan::default(), overlay_config.text_config.clone()));
+        });
 }
 
 fn update_text(
