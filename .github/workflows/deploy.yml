@@ -36,7 +36,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: . -> target
-          shared-key: wasm-${{ env.TRUNK_VERSION }}
+          shared-key: trunk-${{ env.TRUNK_VERSION }}
           cache-targets: true
           cache-on-failure: true
 
