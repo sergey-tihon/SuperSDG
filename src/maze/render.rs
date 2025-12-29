@@ -279,11 +279,13 @@ fn render_maze_on_change(
     commands.spawn((
         Mesh3d(meshes.add(wall_mesh)),
         MeshMaterial3d(wall_material),
+        Transform::default(),
         MazeWall,
     ));
     commands.spawn((
         Mesh3d(meshes.add(floor_mesh)),
         MeshMaterial3d(floor_material),
+        Transform::default(),
         MazeFloor,
     ));
 }
