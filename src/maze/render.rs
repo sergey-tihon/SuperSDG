@@ -119,7 +119,8 @@ const WALL_FACES: [WallFace; 5] = [
 ];
 
 /// Build a single merged mesh for all wall geometry with hidden face culling.
-fn build_wall_mesh(level: &MazeLevel) -> Mesh {
+/// Returns None if there are no visible wall faces.
+fn build_wall_mesh(level: &MazeLevel) -> Option<Mesh> {
     let mut positions: Vec<[f32; 3]> = Vec::new();
     let mut normals: Vec<[f32; 3]> = Vec::new();
     let mut uvs: Vec<[f32; 2]> = Vec::new();
@@ -172,18 +173,25 @@ fn build_wall_mesh(level: &MazeLevel) -> Mesh {
         }
     }
 
-    Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
+    if positions.is_empty() {
+        return None;
+    }
+
+    Some(
+        Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::default(),
+        )
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        .with_inserted_indices(Indices::U32(indices)),
     )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
-    .with_inserted_indices(Indices::U32(indices))
 }
 
 /// Build a single merged mesh for all floor geometry.
-fn build_floor_mesh(level: &MazeLevel) -> Mesh {
+/// Returns None if there are no floor tiles.
+fn build_floor_mesh(level: &MazeLevel) -> Option<Mesh> {
     let mut positions: Vec<[f32; 3]> = Vec::new();
     let mut normals: Vec<[f32; 3]> = Vec::new();
     let mut uvs: Vec<[f32; 2]> = Vec::new();
@@ -226,14 +234,20 @@ fn build_floor_mesh(level: &MazeLevel) -> Mesh {
         }
     }
 
-    Mesh::new(
-        PrimitiveTopology::TriangleList,
-        RenderAssetUsages::default(),
+    if positions.is_empty() {
+        return None;
+    }
+
+    Some(
+        Mesh::new(
+            PrimitiveTopology::TriangleList,
+            RenderAssetUsages::default(),
+        )
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        .with_inserted_indices(Indices::U32(indices)),
     )
-    .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
-    .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
-    .with_inserted_indices(Indices::U32(indices))
 }
 
 fn render_maze_on_change(
@@ -259,33 +273,32 @@ fn render_maze_on_change(
         commands.entity(entity).despawn();
     }
 
-    // Build merged meshes
-    let wall_mesh = build_wall_mesh(&level);
-    let floor_mesh = build_floor_mesh(&level);
+    // Build merged meshes and spawn entities only if meshes exist
+    if let Some(wall_mesh) = build_wall_mesh(&level) {
+        let wall_material = materials.add(StandardMaterial {
+            base_color_texture: Some(render_state.wall_handle.clone()),
+            normal_map_texture: Some(render_state.wall_normal_handle.clone()),
+            ..default()
+        });
+        commands.spawn((
+            Mesh3d(meshes.add(wall_mesh)),
+            MeshMaterial3d(wall_material),
+            Transform::default(),
+            MazeWall,
+        ));
+    }
 
-    // Create materials
-    let wall_material = materials.add(StandardMaterial {
-        base_color_texture: Some(render_state.wall_handle.clone()),
-        normal_map_texture: Some(render_state.wall_normal_handle.clone()),
-        ..default()
-    });
-    let floor_material = materials.add(StandardMaterial {
-        base_color_texture: Some(render_state.floor_handle.clone()),
-        normal_map_texture: Some(render_state.floor_normal_handle.clone()),
-        ..default()
-    });
-
-    // Spawn only 2 entities (one wall mesh, one floor mesh)
-    commands.spawn((
-        Mesh3d(meshes.add(wall_mesh)),
-        MeshMaterial3d(wall_material),
-        Transform::default(),
-        MazeWall,
-    ));
-    commands.spawn((
-        Mesh3d(meshes.add(floor_mesh)),
-        MeshMaterial3d(floor_material),
-        Transform::default(),
-        MazeFloor,
-    ));
+    if let Some(floor_mesh) = build_floor_mesh(&level) {
+        let floor_material = materials.add(StandardMaterial {
+            base_color_texture: Some(render_state.floor_handle.clone()),
+            normal_map_texture: Some(render_state.floor_normal_handle.clone()),
+            ..default()
+        });
+        commands.spawn((
+            Mesh3d(meshes.add(floor_mesh)),
+            MeshMaterial3d(floor_material),
+            Transform::default(),
+            MazeFloor,
+        ));
+    }
 }
