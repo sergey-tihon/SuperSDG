@@ -2,9 +2,9 @@ name: Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 # Avoid overlapping builds on same ref
 concurrency:
@@ -26,42 +26,31 @@ jobs:
       - name: Set up Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          target: wasm32-unknown-unknown
-          # components: clippy # (uncomment if you want linting)
+          targets: wasm32-unknown-unknown
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      # Unified Rust caching (target + registry + git) for faster builds
+      # Unified Rust caching (target + registry + git)
       - name: Cache Rust build artifacts
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: . -> target
-          # If Trunk version changes, this ensures rebuild
-          shared-key: trunk-${{ env.TRUNK_VERSION }}
+          shared-key: wasm-${{ env.TRUNK_VERSION }}
+          cache-targets: true
+          cache-on-failure: true
 
-      - name: Install mold linker
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y mold clang
-          mold --version || true
+      # Cache trunk binary separately for faster cache hit detection
+      - name: Cache Trunk binary
+        id: cache-trunk
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/trunk
+          key: trunk-${{ runner.os }}-${{ env.TRUNK_VERSION }}
 
-      - name: Install Trunk (pinned)
-        run: |
-          if ! command -v trunk >/dev/null 2>&1; then
-            cargo install trunk --version ${TRUNK_VERSION} --locked;
-          elif ! trunk --version | grep -q "${TRUNK_VERSION}"; then
-            cargo install trunk --version ${TRUNK_VERSION} --locked;
-          else
-            echo "Trunk ${TRUNK_VERSION} already installed";
-          fi
-
-      # wasm-bindgen-cli is fetched automatically by Trunk; install only if you prefer explicit pin
-      # - name: Install wasm-bindgen-cli (optional)
-      #   run: cargo install wasm-bindgen-cli --locked --version 0.2.100
-
-      - name: Sanity check (wasm target only)
-        run: cargo check --locked --target wasm32-unknown-unknown
+      - name: Install Trunk
+        if: steps.cache-trunk.outputs.cache-hit != 'true'
+        run: cargo install trunk --version ${{ env.TRUNK_VERSION }} --locked
 
       - name: Build release (Trunk)
         run: trunk build --release
