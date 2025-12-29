@@ -12,10 +12,23 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
-            .add_systems(Update, (keyboard_input_system, animate_player_movement));
+        app.insert_resource(PlayerTrackedGeneration(None))
+            .add_systems(OnEnter(crate::core::AppState::InGame), setup)
+            .add_systems(
+                Update,
+                (
+                    sync_positions_on_maze_change,
+                    keyboard_input_system,
+                    animate_player_movement,
+                )
+                    .run_if(in_state(crate::core::AppState::InGame)),
+            );
     }
 }
+
+/// Tracks which maze generation the player/exit positions have been synced for.
+#[derive(Resource)]
+struct PlayerTrackedGeneration(Option<u32>);
 
 pub struct AnimationState {
     time: f32,
@@ -28,12 +41,20 @@ pub struct PlayerAnimation(Option<AnimationState>);
 #[derive(Component)]
 pub struct PressedDirectionIndex(Option<usize>);
 
+#[derive(Component)]
+pub struct ExitPoint;
+
 fn setup(
     mut commands: Commands,
     level: Res<MazeLevel>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut standard_materials: ResMut<Assets<StandardMaterial>>,
+    existing_player: Query<Entity, With<PlayerAnimation>>,
 ) {
+    if existing_player.single().is_ok() {
+        return;
+    }
+
     // Add Player
     let start = level.player_position;
     commands.spawn((
@@ -56,7 +77,28 @@ fn setup(
             ..default()
         })),
         Transform::from_translation(exit.into()),
+        ExitPoint,
     ));
+}
+
+fn sync_positions_on_maze_change(
+    level: Res<MazeLevel>,
+    mut tracked: ResMut<PlayerTrackedGeneration>,
+    mut player_query: Query<(&mut Transform, &mut PlayerAnimation), Without<ExitPoint>>,
+    mut exit_query: Query<&mut Transform, With<ExitPoint>>,
+) {
+    if tracked.0 != Some(level.generation) {
+        tracked.0 = Some(level.generation);
+
+        if let Ok((mut transform, mut animation)) = player_query.single_mut() {
+            transform.translation = level.player_position.into();
+            animation.0 = None; // Cancel any in-progress animation
+        }
+
+        if let Ok(mut transform) = exit_query.single_mut() {
+            transform.translation = level.exit_position.into();
+        }
+    }
 }
 
 fn keyboard_input_system(

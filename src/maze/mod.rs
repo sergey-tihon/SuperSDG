@@ -4,24 +4,25 @@ use bevy::{
 };
 
 use self::{
-    camera::MazeCameraPlugin, level::MazeLevelPlugin, 
-    light::MazeLightPlugin, mini_map::MiniMapPlugin, player::PlayerPlugin, 
-    render::MazeRenderPlugin,
+    camera::MazeCameraPlugin, level::MazeLevelPlugin, light::MazeLightPlugin,
+    mini_map::MiniMapPlugin, player::PlayerPlugin, render::MazeRenderPlugin,
 };
 
 mod camera;
 mod fps_overlay;
 mod help_overlay;
-mod level;
 mod light;
 mod mini_map;
-mod player;
 mod render;
+
+pub mod level;
+pub mod player;
 
 #[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
 pub struct CameraSwawned;
 
 pub use camera::MainCamera;
+pub use level::MazeLevel;
 
 pub struct MazeGamePlugins;
 

@@ -1,24 +1,29 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use bevy::{camera::Viewport, prelude::*, window::WindowResized};
+use bevy::prelude::*;
 
-use super::player::PlayerAnimation;
+use super::{level::MazeLevel, player::PlayerAnimation};
 
 pub struct MazeCameraPlugin;
+
+const DEFAULT_HEIGHT: f32 = 15.0;
+const DEFAULT_RADIUS: f32 = 20.0;
+const DEFAULT_ANGLE: f32 = FRAC_PI_2;
 
 impl Plugin for MazeCameraPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(CameraSettings {
-            height: 15.0,
-            radius: 20.0,
-            angle: FRAC_PI_2,
+            height: DEFAULT_HEIGHT,
+            radius: DEFAULT_RADIUS,
+            angle: DEFAULT_ANGLE,
         })
+        .insert_resource(CameraTrackedGeneration(None))
         .add_systems(Startup, setup.in_set(super::CameraSwawned))
         .add_systems(
             Update,
             (
-                set_camera_viewports,
-                keyboard_input_system,
+                reset_camera_on_maze_change,
+                keyboard_input_system.run_if(in_state(crate::core::AppState::InGame)),
                 update_camera_position,
             ),
         );
@@ -32,6 +37,10 @@ pub struct CameraSettings {
     pub angle: f32,
 }
 
+/// Tracks which maze generation the camera has been reset for.
+#[derive(Resource)]
+struct CameraTrackedGeneration(Option<u32>);
+
 #[derive(Component)]
 #[require(Camera3d)]
 pub struct MainCamera;
@@ -39,30 +48,20 @@ pub struct MainCamera;
 // Setup camera objects but without any exact position
 // Proper position will be calculated by `CameraChangedEvent` handler
 fn setup(mut commands: Commands) {
-    // Main camera
-    commands.spawn(MainCamera);
+    // Main camera (spawn 3D camera component so UI can target it)
+    let _ = commands.spawn((Camera3d::default(), MainCamera)).id();
 }
 
-fn set_camera_viewports(
-    windows: Query<&Window>,
-    mut resize_events: MessageReader<WindowResized>,
-    mut main_camera: Query<&mut Camera, With<MainCamera>>,
+fn reset_camera_on_maze_change(
+    level: Res<MazeLevel>,
+    mut tracked: ResMut<CameraTrackedGeneration>,
+    mut camera_settings: ResMut<CameraSettings>,
 ) {
-    // We need to dynamically resize the camera's viewports whenever the window size changes
-    // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
-    for resize_event in resize_events.read() {
-        if let Ok(window) = windows.get(resize_event.window)
-            && let Ok(mut main_camera) = main_camera.single_mut()
-        {
-            main_camera.viewport = Some(Viewport {
-                physical_position: UVec2::new(0, 0),
-                physical_size: UVec2::new(
-                    window.resolution.physical_width(),
-                    window.resolution.physical_height(),
-                ),
-                ..default()
-            });
-        }
+    if tracked.0 != Some(level.generation) {
+        tracked.0 = Some(level.generation);
+        camera_settings.height = DEFAULT_HEIGHT;
+        camera_settings.radius = DEFAULT_RADIUS;
+        camera_settings.angle = DEFAULT_ANGLE;
     }
 }
 
