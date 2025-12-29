@@ -3,55 +3,77 @@ use std::cmp;
 use bevy::{camera::Viewport, prelude::*, window::WindowResized};
 
 use super::level::MazeLevel;
+use crate::core::AppState;
 
 pub struct MiniMapPlugin;
 
 impl Plugin for MiniMapPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup)
-            .add_systems(Update, set_camera_viewports);
+        app.insert_resource(MiniMapTrackedGeneration(None))
+            .add_systems(Startup, setup)
+            .add_systems(Update, (set_camera_viewports, update_camera_on_maze_change))
+            .add_systems(OnEnter(AppState::InGame), show_mini_map)
+            .add_systems(OnExit(AppState::InGame), hide_mini_map);
     }
 }
 
 #[derive(Component)]
 struct MiniMapCamera;
 
-fn setup(
-    level: Res<MazeLevel>,
-    mut commands: Commands,
-    windows: Query<(&Window, Entity)>,
-    mut resize_events: MessageWriter<WindowResized>,
-) {
-    // MiniMap camera position update
-    let mid_x = level.width as f32 / 2.0;
-    let mid_z = level.height as f32 / 2.0;
+/// Tracks which maze generation the mini-map camera has been updated for.
+#[derive(Resource)]
+struct MiniMapTrackedGeneration(Option<u32>);
 
-    let transform = Transform::from_xyz(mid_x, 2.5 * mid_x, mid_z)
-        .looking_at(Vec3::new(mid_x, 0.0, mid_z), -Vec3::Z);
+fn setup(level: Res<MazeLevel>, mut commands: Commands) {
+    let (mid_x, mid_z, height) = calc_camera_position(&level);
 
-    // MiniMap camera
     commands.spawn((
         Name::new("MiniMapCamera"),
-        transform,
         Camera3d::default(),
         Camera {
-            // Renders the `mini-map` camera after the `main` camera, which has a default priority of 0
             order: 1,
-            // don't clear on the second camera because the first camera already cleared the window
             clear_color: ClearColorConfig::None,
+            is_active: false,
             ..default()
         },
+        Transform::from_xyz(mid_x, height, mid_z)
+            .looking_at(Vec3::new(mid_x, 0.0, mid_z), Vec3::NEG_Z),
         MiniMapCamera,
     ));
+}
 
-    // This is dirty hack to calculate viewport on setup
-    // For some reason we do no receive WindowResized event on startup
-    if let Ok(windows) = windows.single() {
-        resize_events.write(WindowResized {
-            window: windows.1,
-            width: 0.0,
-            height: 0.0,
-        });
+fn calc_camera_position(level: &MazeLevel) -> (f32, f32, f32) {
+    let mid_x = level.width as f32 / 2.0;
+    let mid_z = level.height as f32 / 2.0;
+    let height = level.width.max(level.height) as f32 * 1.5;
+    (mid_x, mid_z, height)
+}
+
+fn show_mini_map(mut query: Query<&mut Camera, With<MiniMapCamera>>, windows: Query<&Window>) {
+    if let Ok(mut camera) = query.single_mut() {
+        camera.is_active = true;
+
+        if let Ok(window) = windows.single() {
+            update_mini_map_viewport(&mut camera, window);
+        }
+    }
+}
+
+fn update_mini_map_viewport(camera: &mut Camera, window: &Window) {
+    let window_size = window.resolution.physical_size();
+    let mini_size = cmp::min(window_size.x / 4, window_size.y / 3);
+    let margin = 4u32;
+
+    camera.viewport = Some(Viewport {
+        physical_position: UVec2::new(window_size.x - mini_size - margin, margin),
+        physical_size: UVec2::new(mini_size, mini_size),
+        ..default()
+    });
+}
+
+fn hide_mini_map(mut query: Query<&mut Camera, With<MiniMapCamera>>) {
+    if let Ok(mut camera) = query.single_mut() {
+        camera.is_active = false;
     }
 }
 
@@ -60,26 +82,29 @@ fn set_camera_viewports(
     mut resize_events: MessageReader<WindowResized>,
     mut mini_camera: Query<&mut Camera, With<MiniMapCamera>>,
 ) {
-    // We need to dynamically resize the camera's viewports whenever the window size changes
-    // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
     for resize_event in resize_events.read() {
         if let Ok(window) = windows.get(resize_event.window)
-            && let Ok(mut mini_camera) = mini_camera.single_mut()
+            && let Ok(mut camera) = mini_camera.single_mut()
+            && camera.is_active
         {
-            let mini_camera_size = cmp::min(
-                window.resolution.physical_width() / 4,
-                window.resolution.physical_height() / 3,
-            );
+            update_mini_map_viewport(&mut camera, window);
+        }
+    }
+}
 
-            mini_camera.viewport = Some(Viewport {
-                physical_position: UVec2::new(
-                    window.resolution.physical_width() - mini_camera_size,
-                    0,
-                ),
-                physical_size: UVec2::new(mini_camera_size, mini_camera_size),
+fn update_camera_on_maze_change(
+    level: Res<MazeLevel>,
+    mut tracked: ResMut<MiniMapTrackedGeneration>,
+    mut query: Query<&mut Transform, With<MiniMapCamera>>,
+) {
+    if tracked.0 != Some(level.generation) {
+        tracked.0 = Some(level.generation);
 
-                ..default()
-            });
+        if let Ok(mut transform) = query.single_mut() {
+            let (mid_x, mid_z, height) = calc_camera_position(&level);
+
+            *transform = Transform::from_xyz(mid_x, height, mid_z)
+                .looking_at(Vec3::new(mid_x, 0.0, mid_z), Vec3::NEG_Z);
         }
     }
 }

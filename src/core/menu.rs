@@ -202,7 +202,8 @@ fn spawn_menu(
         .spawn((
             Camera2d,
             Camera {
-                order: 100, // Render after 3D camera
+                order: 100,                          // Render after 3D cameras
+                clear_color: ClearColorConfig::None, // Don't clear - preserve 3D scene
                 ..default()
             },
             MenuCamera,

@@ -1,6 +1,6 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 
-use bevy::{camera::Viewport, prelude::*, window::WindowResized};
+use bevy::prelude::*;
 
 use super::{level::MazeLevel, player::PlayerAnimation};
 
@@ -22,7 +22,6 @@ impl Plugin for MazeCameraPlugin {
         .add_systems(
             Update,
             (
-                set_camera_viewports,
                 reset_camera_on_maze_change,
                 keyboard_input_system.run_if(in_state(crate::core::AppState::InGame)),
                 update_camera_position,
@@ -51,29 +50,6 @@ pub struct MainCamera;
 fn setup(mut commands: Commands) {
     // Main camera (spawn 3D camera component so UI can target it)
     let _ = commands.spawn((Camera3d::default(), MainCamera)).id();
-}
-
-fn set_camera_viewports(
-    windows: Query<&Window>,
-    mut resize_events: MessageReader<WindowResized>,
-    mut main_camera: Query<&mut Camera, With<MainCamera>>,
-) {
-    // We need to dynamically resize the camera's viewports whenever the window size changes
-    // A resize_event is sent when the window is first created, allowing us to reuse this system for initial setup.
-    for resize_event in resize_events.read() {
-        if let Ok(window) = windows.get(resize_event.window)
-            && let Ok(mut main_camera) = main_camera.single_mut()
-        {
-            main_camera.viewport = Some(Viewport {
-                physical_position: UVec2::new(0, 0),
-                physical_size: UVec2::new(
-                    window.resolution.physical_width(),
-                    window.resolution.physical_height(),
-                ),
-                ..default()
-            });
-        }
-    }
 }
 
 fn reset_camera_on_maze_change(
