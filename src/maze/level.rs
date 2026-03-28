@@ -119,7 +119,7 @@ impl MazeLevel {
         let mut rng = rand::rng();
         let directions: [(&i32, &i32); 4] = [(&0, &1), (&1, &0), (&0, &-1), (&-1, &0)];
         let dir_choices: Vec<_> = directions
-            .choose_multiple(&mut rng, directions.len())
+            .sample(&mut rng, directions.len())
             .cloned()
             .collect();
 

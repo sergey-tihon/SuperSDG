@@ -21,8 +21,8 @@ const DISTANCE_RANGE: (f32, f32) = (5.0, 40.0); // min, max
 const HEIGHT_RANGE: (f32, f32) = (5.0, 30.0); // min, max
 
 fn setup(mut commands: Commands) {
-    // Ambient light (now a component in Bevy 0.18)
-    commands.spawn(AmbientLight {
+    // Global ambient light
+    commands.insert_resource(GlobalAmbientLight {
         color: GOLD.into(),
         brightness: 0.10, // Slightly brighter ambient light
         ..Default::default()

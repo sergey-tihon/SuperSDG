@@ -4,26 +4,25 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.18.0", features = ["dynamic_linking"] }
-rand = { version = "0.9" }
+bevy = { version = "0.18.1", features = ["dynamic_linking"] }
+rand = { version = "0.10" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3.4", features = ["wasm_js"], optional = false }
-
 
 [features]
 # Keep dev tooling out of release by default
 default = []
 
 dev = [
-  "bevy/dynamic_linking",
   "bevy/bevy_dev_tools",
+  "bevy/dynamic_linking",
 ]
 
 dev_native = [
-  "dev",
-  "bevy/file_watcher",
   "bevy/embedded_watcher",
+  "bevy/file_watcher",
+  "dev",
 ]
 
 # Development profile tuned for fast incremental builds
@@ -44,16 +43,16 @@ debug-assertions = false
 # that's what [Trunk reads](https://github.com/trunk-rs/trunk/issues/605).
 # Optimize for size in the wasm-release profile to reduce load times and bandwidth usage on web.
 [profile.release]
-codegen-units = 1
-lto = "thin"
 opt-level = "s"
 strip = "debuginfo"
+lto = "thin"
 panic = "abort"
+codegen-units = 1
 
 # Override some settings for native builds.
 [profile.release-native]
 inherits = "release"
 opt-level = 3
-lto = "thin"
 strip = "symbols"
+lto = "thin"
 panic = "abort"
