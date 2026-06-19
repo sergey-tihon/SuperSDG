@@ -62,6 +62,7 @@ fn main() {
 }
 
 fn build_start_menu(new_game_system_id: SystemId) -> MenuDef {
+    #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
     let mut items = vec![MenuItem {
         label: "New Game".to_string(),
         action: MenuAction::RunSystem {
@@ -85,6 +86,7 @@ fn build_start_menu(new_game_system_id: SystemId) -> MenuDef {
 }
 
 fn build_pause_menu(restart_system_id: SystemId) -> MenuDef {
+    #[cfg_attr(target_arch = "wasm32", allow(unused_mut))]
     let mut items = vec![
         MenuItem {
             label: "Resume".to_string(),

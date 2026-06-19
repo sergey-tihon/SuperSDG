@@ -8,7 +8,8 @@ bevy = { version = "0.19.0", features = ["dynamic_linking"] }
 rand = { version = "0.10", features = [] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.3.4", features = ["wasm_js"], optional = false }
+getrandom = { version = "0.3", features = ["wasm_js"], optional = false }
+getrandom04 = { version = "0.4", features = ["wasm_js"], optional = false, package = "getrandom" }
 
 [features]
 # Keep dev tooling out of release by default
