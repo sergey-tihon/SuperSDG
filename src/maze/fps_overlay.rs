@@ -1,6 +1,7 @@
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
+    ui::widget::TextUiWriter,
 };
 
 use super::{OverlayCamera, OverlayCameraSpawned};
@@ -53,8 +54,8 @@ impl Default for FpsOverlayConfig {
     fn default() -> Self {
         FpsOverlayConfig {
             text_config: TextFont {
-                font: Handle::<Font>::default(),
-                font_size: 32.0,
+                font: Handle::<Font>::default().into(),
+                font_size: FontSize::Px(32.0),
                 ..default()
             },
             text_color: Color::WHITE,
@@ -96,7 +97,11 @@ fn setup_global(mut commands: Commands, overlay_config: Res<FpsOverlayConfig>) {
                 TextColor(overlay_config.text_color),
                 FpsText,
             ))
-            .with_child((TextSpan::default(), overlay_config.text_config.clone()));
+            .with_child((
+                TextSpan::default(),
+                overlay_config.text_config.clone(),
+                TextColor(overlay_config.text_color),
+            ));
         });
 }
 

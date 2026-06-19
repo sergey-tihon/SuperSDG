@@ -254,8 +254,8 @@ fn spawn_menu(
                         let mut entity_commands = col.spawn((
                             Text::new(&label),
                             TextFont {
-                                font: asset_server.load(&config.font_path),
-                                font_size: config.font_size,
+                                font: asset_server.load(&config.font_path).into(),
+                                font_size: FontSize::Px(config.font_size),
                                 ..default()
                             },
                             TextColor(if idx == 0 {

@@ -33,7 +33,7 @@ fn setup(mut commands: Commands) {
         intensity: 10_000_000.0, // Increased intensity for brighter beam
         range: 300.0,
         color: Color::WHITE,
-        shadows_enabled: true,
+        shadow_maps_enabled: true,
         inner_angle: INNER_ANGLE,
         outer_angle: OUTER_ANGLE,
         ..default()

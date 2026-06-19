@@ -43,8 +43,8 @@ impl Default for HelpOverlayConfig {
     fn default() -> Self {
         HelpOverlayConfig {
             text_config: TextFont {
-                font: Handle::<Font>::default(),
-                font_size: 24.0,
+                font: Handle::<Font>::default().into(),
+                font_size: FontSize::Px(24.0),
                 ..default()
             },
             text_color: Color::WHITE,
@@ -90,14 +90,17 @@ fn setup(
             .with_child((
                 TextSpan::new("Movement: Arrow Keys\n"),
                 overlay_config.text_config.clone(),
+                TextColor(overlay_config.text_color),
             ))
             .with_child((
                 TextSpan::new("Camera: Shift + Arrow Keys\n"),
                 overlay_config.text_config.clone(),
+                TextColor(overlay_config.text_color),
             ))
             .with_child((
                 TextSpan::new("Menu: Escape / Q\n"),
                 overlay_config.text_config.clone(),
+                TextColor(overlay_config.text_color),
             ));
         });
 }
