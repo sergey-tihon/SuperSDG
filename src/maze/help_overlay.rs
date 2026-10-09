@@ -44,30 +44,26 @@ fn setup(mut commands: Commands) {
     commands.spawn_scene(bsn! {
         #HelpOverlay
         HelpOverlayRoot
-        Node { position_type: PositionType::Absolute, bottom: rem(0.5), left: rem(0.5) }
+        Node { display: Display::None, position_type: PositionType::Absolute, bottom: rem(0.5), left: rem(0.5) }
         GlobalZIndex(HELP_OVERLAY_ZINDEX)
         Visibility::Hidden
         Children [
-            HelpText Text("Help: F1\n") TextFont { font_size: HELP_FONT_SIZE } Visibility::Hidden
+            HelpText Text("Help: F1\n") TextFont { font_size: HELP_FONT_SIZE } Visibility::Visible
             Children [ {lines} ]
         ]
     });
 }
 
-fn show_overlay(
-    mut root: Single<&mut Visibility, (With<HelpOverlayRoot>, Without<HelpText>)>,
-    mut text: Single<&mut Visibility, (With<HelpText>, Without<HelpOverlayRoot>)>,
-) {
-    **root = Visibility::Visible;
-    **text = Visibility::Visible;
+fn show_overlay(root: Single<(&mut Visibility, &mut Node), With<HelpOverlayRoot>>) {
+    let (mut visibility, mut node) = root.into_inner();
+    *visibility = Visibility::Visible;
+    node.display = Display::Flex;
 }
 
-fn hide_overlay(
-    mut root: Single<&mut Visibility, (With<HelpOverlayRoot>, Without<HelpText>)>,
-    mut text: Single<&mut Visibility, (With<HelpText>, Without<HelpOverlayRoot>)>,
-) {
-    **root = Visibility::Hidden;
-    **text = Visibility::Hidden;
+fn hide_overlay(root: Single<(&mut Visibility, &mut Node), With<HelpOverlayRoot>>) {
+    let (mut visibility, mut node) = root.into_inner();
+    *visibility = Visibility::Hidden;
+    node.display = Display::None;
 }
 
 fn toggle_help_text(mut visibility: Single<&mut Visibility, With<HelpText>>) {
@@ -82,7 +78,7 @@ mod tests {
     use bevy::text::TextPlugin;
 
     #[test]
-    fn help_overlay_is_visible_only_in_game() {
+    fn help_toggle_persists_across_pause_and_resume() {
         let mut app = App::new();
         app.add_plugins((
             MinimalPlugins,
@@ -98,32 +94,47 @@ mod tests {
         app.update();
         {
             let world = app.world_mut();
-            let mut roots = world.query_filtered::<&Visibility, With<HelpOverlayRoot>>();
-            assert_eq!(*roots.single(world).unwrap(), Visibility::Hidden);
-            let mut help_text = world.query_filtered::<&Visibility, With<HelpText>>();
-            assert_eq!(*help_text.single(world).unwrap(), Visibility::Hidden);
-        }
-
-        app.world_mut()
-            .resource_mut::<NextState<AppState>>()
-            .set(AppState::InGame);
-        app.update();
-        {
-            let world = app.world_mut();
-            let mut roots = world.query_filtered::<&Visibility, With<HelpOverlayRoot>>();
-            assert_eq!(*roots.single(world).unwrap(), Visibility::Visible);
+            let mut roots = world.query_filtered::<(&Visibility, &Node), With<HelpOverlayRoot>>();
+            let (visibility, node) = roots.single(world).unwrap();
+            assert_eq!(*visibility, Visibility::Hidden);
+            assert_eq!(node.display, Display::None);
             let mut help_text = world.query_filtered::<&Visibility, With<HelpText>>();
             assert_eq!(*help_text.single(world).unwrap(), Visibility::Visible);
         }
 
         app.world_mut()
             .resource_mut::<NextState<AppState>>()
-            .set(AppState::Menu);
+            .set(AppState::InGame);
         app.update();
-        let world = app.world_mut();
-        let mut roots = world.query_filtered::<&Visibility, With<HelpOverlayRoot>>();
-        assert_eq!(*roots.single(world).unwrap(), Visibility::Hidden);
-        let mut help_text = world.query_filtered::<&Visibility, With<HelpText>>();
-        assert_eq!(*help_text.single(world).unwrap(), Visibility::Hidden);
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::F1);
+        app.update();
+        {
+            let world = app.world_mut();
+            let mut help_text = world.query_filtered::<&Visibility, With<HelpText>>();
+            assert_eq!(*help_text.single(world).unwrap(), Visibility::Hidden);
+        }
+
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::Paused);
+        app.update();
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::InGame);
+        app.update();
+        {
+            let world = app.world_mut();
+            let mut roots = world.query_filtered::<(&Visibility, &Node), With<HelpOverlayRoot>>();
+            let (visibility, node) = roots.single(world).unwrap();
+            assert_eq!(*visibility, Visibility::Visible);
+            assert_eq!(node.display, Display::Flex);
+            let mut help_text = world.query_filtered::<&Visibility, With<HelpText>>();
+            assert_eq!(*help_text.single(world).unwrap(), Visibility::Hidden);
+        }
     }
 }
