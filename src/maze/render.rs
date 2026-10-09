@@ -2,42 +2,48 @@ use bevy::asset::RenderAssetUsages;
 use bevy::mesh::{Indices, PrimitiveTopology};
 use bevy::prelude::*;
 
-use super::level::MazeLevel;
+use super::level::{MazeLevel, MazeRegenerated};
 
 pub struct MazeRenderPlugin;
 
 impl Plugin for MazeRenderPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, setup)
-            .add_systems(Update, render_maze_on_change);
+            .add_observer(rebuild_maze_meshes);
     }
 }
 
 /// Marker component for maze wall entities.
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 pub struct MazeWall;
 
-/// Marker component for maze floor entities.
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 pub struct MazeFloor;
 
 #[derive(Resource)]
-struct MazeRenderState {
-    rendered_generation: Option<u32>,
-    wall_handle: Handle<Image>,
-    wall_normal_handle: Handle<Image>,
-    floor_handle: Handle<Image>,
-    floor_normal_handle: Handle<Image>,
+struct MazeMaterials {
+    wall: Handle<StandardMaterial>,
+    floor: Handle<StandardMaterial>,
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.insert_resource(MazeRenderState {
-        rendered_generation: None,
-        wall_handle: asset_server.load("textures/wall.png"),
-        wall_normal_handle: asset_server.load("textures/wall_normal.png"),
-        floor_handle: asset_server.load("textures/floor.png"),
-        floor_normal_handle: asset_server.load("textures/floor_normal.png"),
+type MazeEntityFilter = Or<(With<MazeWall>, With<MazeFloor>)>;
+
+fn setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let wall = materials.add(StandardMaterial {
+        base_color_texture: Some(asset_server.load("textures/wall.png")),
+        normal_map_texture: Some(asset_server.load("textures/wall_normal.png")),
+        ..default()
     });
+    let floor = materials.add(StandardMaterial {
+        base_color_texture: Some(asset_server.load("textures/floor.png")),
+        normal_map_texture: Some(asset_server.load("textures/floor_normal.png")),
+        ..default()
+    });
+    commands.insert_resource(MazeMaterials { wall, floor });
 }
 
 /// Check if a cell is a wall. Out-of-bounds returns false to ensure boundary faces are rendered.
@@ -250,55 +256,34 @@ fn build_floor_mesh(level: &MazeLevel) -> Option<Mesh> {
     )
 }
 
-fn render_maze_on_change(
+fn rebuild_maze_meshes(
+    _: On<MazeRegenerated>,
     mut commands: Commands,
     level: Res<MazeLevel>,
-    mut render_state: ResMut<MazeRenderState>,
+    materials: Res<MazeMaterials>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-    walls_query: Query<Entity, With<MazeWall>>,
-    floors_query: Query<Entity, With<MazeFloor>>,
 ) {
-    // Only re-render if generation changed
-    if render_state.rendered_generation == Some(level.generation) {
-        return;
-    }
-    render_state.rendered_generation = Some(level.generation);
+    commands.despawn_all::<MazeEntityFilter>();
 
-    // Despawn existing wall and floor entities (now only 2 max)
-    for entity in walls_query.iter() {
-        commands.entity(entity).despawn();
-    }
-    for entity in floors_query.iter() {
-        commands.entity(entity).despawn();
-    }
-
-    // Build merged meshes and spawn entities only if meshes exist
     if let Some(wall_mesh) = build_wall_mesh(&level) {
-        let wall_material = materials.add(StandardMaterial {
-            base_color_texture: Some(render_state.wall_handle.clone()),
-            normal_map_texture: Some(render_state.wall_normal_handle.clone()),
-            ..default()
+        let mesh = meshes.add(wall_mesh);
+        let material = materials.wall.clone();
+        commands.spawn_scene(bsn! {
+            #MazeWalls
+            MazeWall
+            Mesh3d(mesh)
+            MeshMaterial3d::<StandardMaterial>(material)
         });
-        commands.spawn((
-            Mesh3d(meshes.add(wall_mesh)),
-            MeshMaterial3d(wall_material),
-            Transform::default(),
-            MazeWall,
-        ));
     }
 
     if let Some(floor_mesh) = build_floor_mesh(&level) {
-        let floor_material = materials.add(StandardMaterial {
-            base_color_texture: Some(render_state.floor_handle.clone()),
-            normal_map_texture: Some(render_state.floor_normal_handle.clone()),
-            ..default()
+        let mesh = meshes.add(floor_mesh);
+        let material = materials.floor.clone();
+        commands.spawn_scene(bsn! {
+            #MazeFloors
+            MazeFloor
+            Mesh3d(mesh)
+            MeshMaterial3d::<StandardMaterial>(material)
         });
-        commands.spawn((
-            Mesh3d(meshes.add(floor_mesh)),
-            MeshMaterial3d(floor_material),
-            Transform::default(),
-            MazeFloor,
-        ));
     }
 }
