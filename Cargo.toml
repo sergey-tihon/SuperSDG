@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-bevy = { version = "0.20.0", features = ["dynamic_linking"] }
+bevy = "0.20.0"
 rand = { version = "0.10", features = [] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
