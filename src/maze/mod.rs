@@ -1,7 +1,4 @@
-use bevy::{
-    app::PluginGroupBuilder,
-    prelude::{Component, PluginGroup, SystemSet},
-};
+use bevy::prelude::*;
 
 use self::{
     camera::MazeCameraPlugin, level::MazeLevelPlugin, light::MazeLightPlugin,
@@ -18,36 +15,37 @@ mod render;
 pub mod level;
 pub mod player;
 
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct CameraSwawned;
+pub struct MazeGamePlugin;
 
-/// SystemSet that marks the overlay camera as spawned
-#[derive(SystemSet, Debug, Hash, PartialEq, Eq, Clone)]
-pub struct OverlayCameraSpawned;
-
-/// Shared 2D camera for all overlays (FPS, help, etc.)
-#[derive(Component)]
-pub struct OverlayCamera;
-
-pub use level::MazeLevel;
-
-pub struct MazeGamePlugins;
-
-impl PluginGroup for MazeGamePlugins {
-    fn build(self) -> bevy::app::PluginGroupBuilder {
-        let mut group = PluginGroupBuilder::start::<Self>();
-
-        // Core Game Plugins
-        group = group
-            .add(MazeLevelPlugin)
-            .add(PlayerPlugin)
-            .add(MazeCameraPlugin)
-            .add(fps_overlay::FpsOverlayPlugin::default())
-            .add(help_overlay::HelpOverlayPlugin::default())
-            .add(MiniMapPlugin)
-            .add(MazeLightPlugin)
-            .add(MazeRenderPlugin);
-
-        group
+impl Plugin for MazeGamePlugin {
+    fn build(&self, app: &mut App) {
+        app.configure_sets(
+            Update,
+            (
+                MazeSystems::Input,
+                MazeSystems::Movement,
+                MazeSystems::Camera,
+                MazeSystems::Lighting,
+            )
+                .chain(),
+        )
+        .add_plugins((
+            MazeLevelPlugin,
+            PlayerPlugin,
+            MazeCameraPlugin,
+            fps_overlay::FpsOverlayPlugin,
+            help_overlay::HelpOverlayPlugin,
+            MiniMapPlugin,
+            MazeLightPlugin,
+            MazeRenderPlugin,
+        ));
     }
+}
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+enum MazeSystems {
+    Input,
+    Movement,
+    Camera,
+    Lighting,
 }

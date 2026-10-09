@@ -1,12 +1,10 @@
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
-    ui::widget::TextUiWriter,
 };
 
-use super::{OverlayCamera, OverlayCameraSpawned};
-
-pub const FPS_OVERLAY_ZINDEX: i32 = i32::MAX - 32;
+const FPS_OVERLAY_ZINDEX: i32 = i32::MAX - 32;
+const FPS_FONT_SIZE: FontSize = FontSize::Rem(1.6);
 
 /// A plugin that adds an FPS overlay to the Bevy application.
 ///
@@ -15,131 +13,40 @@ pub const FPS_OVERLAY_ZINDEX: i32 = i32::MAX - 32;
 /// Note: It is recommended to use native overlay of rendering statistics when possible for lower overhead and more accurate results.
 /// The correct way to do this will vary by platform:
 /// - **Metal**: setting env variable `MTL_HUD_ENABLED=1`
-#[derive(Default)]
-pub struct FpsOverlayPlugin {
-    /// Starting configuration of overlay, this can be later be changed through [`FpsOverlayConfig`] resource.
-    pub config: FpsOverlayConfig,
-}
+pub struct FpsOverlayPlugin;
 
 impl Plugin for FpsOverlayPlugin {
     fn build(&self, app: &mut App) {
-        // TODO: Use plugin dependencies, see https://github.com/bevyengine/bevy/issues/69
         if !app.is_plugin_added::<FrameTimeDiagnosticsPlugin>() {
             app.add_plugins(FrameTimeDiagnosticsPlugin::default());
         }
-        app.insert_resource(self.config.clone())
-            .add_systems(Startup, setup_global.in_set(OverlayCameraSpawned))
-            .add_systems(
-                Update,
-                (
-                    (customize_text, toggle_display).run_if(resource_changed::<FpsOverlayConfig>),
-                    update_text,
-                ),
-            );
+        app.add_systems(Startup, setup)
+            .add_systems(Update, update_text);
     }
 }
 
-/// Configuration options for the FPS overlay.
-#[derive(Resource, Clone)]
-pub struct FpsOverlayConfig {
-    /// Configuration of text in the overlay.
-    pub text_config: TextFont,
-    /// Color of text in the overlay.
-    pub text_color: Color,
-    /// Displays the FPS overlay if true.
-    pub enabled: bool,
-}
+#[derive(Component, Default, Clone)]
+struct FpsValue;
 
-impl Default for FpsOverlayConfig {
-    fn default() -> Self {
-        FpsOverlayConfig {
-            text_config: TextFont {
-                font: Handle::<Font>::default().into(),
-                font_size: FontSize::Px(32.0),
-                ..default()
-            },
-            text_color: Color::WHITE,
-            enabled: true,
-        }
-    }
-}
-
-#[derive(Component)]
-struct FpsText;
-
-fn setup_global(mut commands: Commands, overlay_config: Res<FpsOverlayConfig>) {
-    // Spawn a dedicated 2D camera for all overlays that renders on top
-    let camera_entity = commands
-        .spawn((
-            Camera2d,
-            Camera {
-                order: 1000, // Render on top of everything
-                clear_color: ClearColorConfig::None,
-                ..default()
-            },
-            OverlayCamera,
-        ))
-        .id();
-
-    commands
-        .spawn((
-            UiTargetCamera(camera_entity),
-            Node {
-                position_type: PositionType::Absolute,
-                ..default()
-            },
-            GlobalZIndex(FPS_OVERLAY_ZINDEX),
-        ))
-        .with_children(|p| {
-            p.spawn((
-                Text::new("FPS: "),
-                overlay_config.text_config.clone(),
-                TextColor(overlay_config.text_color),
-                FpsText,
-            ))
-            .with_child((
-                TextSpan::default(),
-                overlay_config.text_config.clone(),
-                TextColor(overlay_config.text_color),
-            ));
-        });
+fn setup(mut commands: Commands) {
+    commands.spawn_scene(bsn! {
+        #FpsOverlay
+        Node { position_type: PositionType::Absolute }
+        GlobalZIndex(FPS_OVERLAY_ZINDEX)
+        Children [
+            Text("FPS: ") TextFont { font_size: FPS_FONT_SIZE }
+            Children [ FpsValue TextSpan TextFont { font_size: FPS_FONT_SIZE } ]
+        ]
+    });
 }
 
 fn update_text(
     diagnostic: Res<DiagnosticsStore>,
-    query: Query<Entity, With<FpsText>>,
-    mut writer: TextUiWriter,
+    mut value: Single<&mut TextSpan, With<FpsValue>>,
 ) {
-    for entity in &query {
-        if let Some(fps) = diagnostic.get(&FrameTimeDiagnosticsPlugin::FPS)
-            && let Some(value) = fps.average()
-        {
-            *writer.text(entity, 1) = format!("{value:.0}");
-        }
-    }
-}
-
-fn customize_text(
-    overlay_config: Res<FpsOverlayConfig>,
-    query: Query<Entity, With<FpsText>>,
-    mut writer: TextUiWriter,
-) {
-    for entity in &query {
-        writer.for_each_font(entity, |mut font| {
-            *font = overlay_config.text_config.clone();
-        });
-        writer.for_each_color(entity, |mut color| color.0 = overlay_config.text_color);
-    }
-}
-
-fn toggle_display(
-    overlay_config: Res<FpsOverlayConfig>,
-    mut query: Query<&mut Visibility, With<FpsText>>,
-) {
-    for mut visibility in &mut query {
-        visibility.set_if_neq(match overlay_config.enabled {
-            true => Visibility::Visible,
-            false => Visibility::Hidden,
-        });
+    if let Some(fps) = diagnostic.get(&FrameTimeDiagnosticsPlugin::FPS)
+        && let Some(fps) = fps.average()
+    {
+        value.0 = format!("{fps:.0}");
     }
 }

@@ -1,3 +1,4 @@
+use crate::core::{AppState, Complexity, GameSettings};
 use bevy::prelude::*;
 use rand::prelude::*;
 use std::collections::VecDeque;
@@ -8,15 +9,50 @@ use std::ops::Add;
 /// All coordinates are 0-based, with (0,0) at the top-left corner of the maze.
 /// Vec2i stores coordinates as (i32, i32) to allow for negative values during calculations,
 /// but all indexing into the map must be checked for non-negativity and bounds.
+#[derive(Event)]
+pub struct MazeRegenerated;
+
 pub struct MazeLevelPlugin;
 
 impl Plugin for MazeLevelPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(MazeLevel::new(20, 20));
+        app.init_resource::<MazeLevel>()
+            .add_systems(PostStartup, |mut commands: Commands| {
+                commands.trigger(MazeRegenerated);
+            })
+            .add_systems(
+                OnTransition {
+                    exited: AppState::Menu,
+                    entered: AppState::InGame,
+                },
+                apply_selected_complexity,
+            );
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub fn regenerate_maze(
+    mut commands: Commands,
+    mut level: ResMut<MazeLevel>,
+    settings: Res<GameSettings>,
+) {
+    let (x, y) = settings.complexity.maze_size();
+    level.regenerate_with_size(x, y);
+    commands.trigger(MazeRegenerated);
+}
+
+pub(super) fn apply_selected_complexity(
+    mut commands: Commands,
+    mut level: ResMut<MazeLevel>,
+    settings: Res<GameSettings>,
+) {
+    let (x, y) = settings.complexity.maze_size();
+    if level.dimensions() != (x, y) {
+        level.regenerate_with_size(x, y);
+        commands.trigger(MazeRegenerated);
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct Vec2i(pub i32, pub i32);
 
 impl std::ops::Add<Vec2i> for Vec2i {
@@ -85,11 +121,15 @@ pub struct MazeLevel {
     pub width: usize,
     pub height: usize,
     pub map: Vec<Vec<char>>,
-    pub player_position: Vec2i,
-    pub exit_position: Vec2i,
-    /// Generation counter, incremented on each maze regeneration.
-    /// Used by reactive systems to detect maze changes.
-    pub generation: u32,
+    pub start: Vec2i,
+    pub exit: Vec2i,
+}
+
+impl Default for MazeLevel {
+    fn default() -> Self {
+        let (x, y) = Complexity::default().maze_size();
+        Self::new(x, y)
+    }
 }
 
 impl MazeLevel {
@@ -101,16 +141,15 @@ impl MazeLevel {
             width,
             height,
             map: vec![vec!['#'; width]; height],
-            player_position: Vec2i(0, 0),
-            exit_position: Vec2i(0, 0),
-            generation: 0,
+            start: Vec2i(0, 0),
+            exit: Vec2i(0, 0),
         };
 
         maze.generate_maze(1, 1);
 
         let (start, exit) = maze.random_player_and_exit_positions();
-        maze.player_position = Vec2i::new(start);
-        maze.exit_position = Vec2i::new(exit);
+        maze.start = Vec2i::new(start);
+        maze.exit = Vec2i::new(exit);
 
         maze
     }
@@ -195,7 +234,6 @@ impl MazeLevel {
     }
 
     /// Regenerates the maze with new dimensions.
-    /// Increments the generation counter to trigger reactive systems.
     pub fn regenerate_with_size(&mut self, x: usize, y: usize) {
         self.width = (2 * x) + 1;
         self.height = (2 * y) + 1;
@@ -203,10 +241,8 @@ impl MazeLevel {
         self.generate_maze(1, 1);
 
         let (start, exit) = self.random_player_and_exit_positions();
-        self.player_position = Vec2i::new(start);
-        self.exit_position = Vec2i::new(exit);
-
-        self.generation += 1;
+        self.start = Vec2i::new(start);
+        self.exit = Vec2i::new(exit);
     }
 
     /// Returns the logical maze dimensions (x, y), not the grid dimensions.
@@ -240,7 +276,15 @@ impl fmt::Display for MazeLevel {
 #[cfg(test)]
 mod test {
     use super::{MazeLevel, Vec2i};
+    use crate::core::Complexity;
 
+    #[test]
+    fn default_level_matches_default_complexity() {
+        assert_eq!(
+            MazeLevel::default().dimensions(),
+            Complexity::default().maze_size()
+        );
+    }
     #[test]
     fn border_exist() {
         let level = MazeLevel::new(20, 20);
@@ -286,7 +330,7 @@ mod test {
     #[test]
     fn player_placement_is_always_in_empty_cell() {
         let level = MazeLevel::new(20, 20);
-        let player_pos = level.player_position;
+        let player_pos = level.start;
 
         // Convert to usize for map access
         let x = player_pos.0 as usize;
@@ -308,7 +352,7 @@ mod test {
     #[test]
     fn movement_in_all_directions() {
         let level = MazeLevel::new(20, 20);
-        let player_pos = level.player_position;
+        let player_pos = level.start;
 
         // Test movement in all four directions
         for direction in 0..4 {
@@ -362,16 +406,14 @@ mod test {
         assert_eq!(level.width, 41);
         assert_eq!(level.height, 41);
 
-        let old_generation = level.generation;
         level.regenerate_with_size(40, 40);
 
         assert_eq!(level.dimensions(), (40, 40));
         assert_eq!(level.width, 81);
         assert_eq!(level.height, 81);
-        assert_eq!(level.generation, old_generation + 1);
 
         // Verify player is in valid position
-        let player_pos = level.player_position;
+        let player_pos = level.start;
         assert!(level.is_cell_empty(player_pos));
     }
 
@@ -390,7 +432,7 @@ mod test {
         }
 
         // Player and exit should be in empty cells
-        assert!(level.is_cell_empty(level.player_position));
-        assert!(level.is_cell_empty(level.exit_position));
+        assert!(level.is_cell_empty(level.start));
+        assert!(level.is_cell_empty(level.exit));
     }
 }

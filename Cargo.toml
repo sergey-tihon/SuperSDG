@@ -17,6 +17,8 @@ default = []
 dev = [
   "bevy/bevy_dev_tools",
   "bevy/dynamic_linking",
+  "bevy/render_dev_tools",
+  "bevy/debug",
 ]
 
 dev_native = [

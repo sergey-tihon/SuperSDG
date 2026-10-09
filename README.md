@@ -11,6 +11,20 @@ Run locally in the native window:
 cargo run
 ```
 
+Run with development tooling:
+
+```shell
+cargo run --features dev_native
+```
+
+Set `SUPERSDG_SCHEDULE_SEED` to reproduce `Update` schedule ordering:
+
+```shell
+SUPERSDG_SCHEDULE_SEED=1 cargo run --features dev_native
+```
+
+Menus use focused Bevy buttons: the first item receives focus when a menu opens; arrow/WASD navigation wraps, mouse hover moves focus, and Enter, Space, or click activates the focused item. `Escape` or `Q` pauses in game and exits from the native start menu. `F1` toggles help, `F3` cycles render-debug modes, and `F4` cycles opacity. macOS may reserve function keys for system shortcuts; use `Fn` when needed.
+
 Run locally in the browser:
 
 ```shell

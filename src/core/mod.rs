@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
 pub mod menu;
+pub mod ui;
 
 /// Application states for the game
-#[derive(States, Default, Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(States, Default, Debug, Clone, Copy, Eq, PartialEq, Hash)]
 pub enum AppState {
     #[default]
     Menu, // Start menu (initial state)

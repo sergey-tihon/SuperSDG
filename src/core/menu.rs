@@ -1,397 +1,397 @@
 use bevy::ecs::system::SystemId;
+use bevy::input::common_conditions::input_just_pressed;
+use bevy::input_focus::tab_navigation::TabIndex;
+use bevy::input_focus::{FocusCause, InputFocus};
+use bevy::picking::prelude::PointerOver;
 use bevy::prelude::*;
+use bevy::scene::Ready;
+use bevy::text::FontSourceTemplate;
+use bevy::ui_widgets::{Activate, Button};
 
 use super::{AppState, GameSettings};
 
 pub const MENU_ZINDEX: i32 = i32::MAX - 10;
 
-// ============================================================================
-// Core Types
-// ============================================================================
+const MENU_FONT_PATH: &str = "fonts/screen-diags-font.ttf";
+const MENU_FONT_REM: f32 = 2.4;
+const SELECTED_COLOR: Color = Color::srgb(1.0, 0.4, 0.0);
+const NORMAL_COLOR: Color = Color::WHITE;
+const BACKDROP_COLOR: Color = Color::srgba(0.0, 0.0, 0.0, 0.7);
 
-/// Action triggered when a menu item is selected
 #[derive(Clone)]
 pub enum MenuAction {
-    /// Transition to a new app state
     ChangeState(AppState),
-    /// Execute a one-shot system and optionally change state
     RunSystem {
         system: SystemId,
         next_state: Option<AppState>,
     },
-    /// Cycle through complexity levels
     CycleComplexity,
-    /// Exit the application (non-WASM only)
     #[cfg(not(target_arch = "wasm32"))]
     Exit,
 }
 
-/// Single menu item definition
 #[derive(Clone)]
 pub struct MenuItem {
     pub label: String,
     pub action: MenuAction,
 }
 
-/// Menu definition passed to the plugin
+#[derive(Clone)]
 pub struct MenuDef {
     pub items: Vec<MenuItem>,
+    pub on_escape: Option<MenuAction>,
 }
 
-/// Configuration for menu appearance
-#[derive(Resource, Clone)]
-pub struct MenuConfig {
-    pub font_path: String,
-    pub font_size: f32,
-    pub selected_color: Color,
-    pub normal_color: Color,
+#[derive(Component, Clone)]
+pub struct MenuScreen {
+    on_escape: Option<MenuAction>,
 }
 
-impl Default for MenuConfig {
-    fn default() -> Self {
-        Self {
-            font_path: "fonts/screen-diags-font.ttf".to_string(),
-            font_size: 48.0,
-            selected_color: Color::srgb(1.0, 0.4, 0.0),
-            normal_color: Color::WHITE,
-        }
-    }
+#[derive(Component, Clone)]
+struct MenuEntry {
+    index: usize,
+    action: MenuAction,
 }
-
-// ============================================================================
-// Resources & Components
-// ============================================================================
-
-/// Tracks current selection index for the active menu
-#[derive(Resource, Default)]
-pub struct MenuSelection(pub usize);
-
-/// Marker for menu root entity (for cleanup)
-#[derive(Component)]
-struct MenuRoot;
-
-/// Marker for the dedicated menu camera
-#[derive(Component)]
-struct MenuCamera;
-
-/// Component on each menu item storing its index
-#[derive(Component)]
-struct MenuItemIndex(usize);
-
-/// Marker component for complexity menu items (for dynamic label updates)
-#[derive(Component)]
-pub struct ComplexityMenuItem;
-
-/// Stores the menu definition for a specific state
-#[derive(Resource, Clone)]
-struct ActiveMenuItems(Vec<MenuItem>);
-
-// ============================================================================
-// Plugins
-// ============================================================================
-
-/// Main menu plugin - initializes shared resources
-pub struct MenuPlugin;
-
 impl Plugin for MenuPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<MenuSelection>()
-            .init_resource::<MenuConfig>();
+        app.add_observer(run_menu_action).add_systems(
+            Update,
+            (
+                navigate_menu.run_if(any_with_component::<MenuScreen>),
+                highlight_focused_item
+                    .run_if(resource_changed::<InputFocus>)
+                    .after(navigate_menu),
+                menu_escape,
+                update_complexity_labels.run_if(resource_changed::<GameSettings>),
+            ),
+        );
     }
 }
 
-/// Plugin for the start menu state (AppState::Menu)
-pub struct StartMenuPlugin {
+#[derive(Event, Clone)]
+pub struct RunMenuAction(pub MenuAction);
+
+pub struct MenuPlugin;
+
+pub struct MenuScreenPlugin {
+    pub state: AppState,
     pub menu_def: MenuDef,
 }
 
-impl Plugin for StartMenuPlugin {
+impl Plugin for MenuScreenPlugin {
     fn build(&self, app: &mut App) {
-        let items = self.menu_def.items.clone();
+        let (state, def) = (self.state, self.menu_def.clone());
+        app.add_systems(
+            OnEnter(self.state),
+            move |mut commands: Commands, settings: Res<GameSettings>| {
+                commands.spawn_scene(menu_scene(state, &def, &settings));
+            },
+        );
+    }
 
-        app.insert_resource(StartMenuItems(items))
-            .add_systems(OnEnter(AppState::Menu), setup_start_menu)
-            .add_systems(OnExit(AppState::Menu), cleanup_menu)
-            .add_systems(
-                Update,
-                (
-                    navigate_menu,
-                    activate_menu,
-                    update_visuals,
-                    esc_in_start_menu,
-                )
-                    .run_if(in_state(AppState::Menu)),
-            );
+    fn is_unique(&self) -> bool {
+        false
     }
 }
 
-/// Plugin for the pause menu state (AppState::Paused)
-pub struct PauseMenuPlugin {
-    pub menu_def: MenuDef,
-}
-
-impl Plugin for PauseMenuPlugin {
-    fn build(&self, app: &mut App) {
-        let items = self.menu_def.items.clone();
-
-        app.insert_resource(PauseMenuItems(items))
-            .add_systems(OnEnter(AppState::Paused), setup_pause_menu)
-            .add_systems(OnExit(AppState::Paused), cleanup_menu)
-            .add_systems(
-                Update,
-                (
-                    navigate_menu,
-                    activate_menu,
-                    update_visuals,
-                    esc_in_pause_menu,
-                )
-                    .run_if(in_state(AppState::Paused)),
-            );
-    }
-}
-
-/// Convenience plugin for ESC to pause (add to InGame state)
 pub struct EscToPausePlugin;
 
 impl Plugin for EscToPausePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, esc_to_pause.run_if(in_state(AppState::InGame)));
+        app.add_systems(
+            Update,
+            pause_game.run_if(in_state(AppState::InGame)).run_if(
+                input_just_pressed(KeyCode::Escape).or_else(input_just_pressed(KeyCode::KeyQ)),
+            ),
+        );
     }
 }
 
-// ============================================================================
-// Menu Item Storage Resources (one per menu state)
-// ============================================================================
-
-#[derive(Resource, Clone)]
-struct StartMenuItems(Vec<MenuItem>);
-
-#[derive(Resource, Clone)]
-struct PauseMenuItems(Vec<MenuItem>);
-
-// ============================================================================
-// Systems
-// ============================================================================
-
-fn setup_start_menu(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    config: Res<MenuConfig>,
-    items: Res<StartMenuItems>,
-    settings: Res<GameSettings>,
-    mut selection: ResMut<MenuSelection>,
-) {
-    selection.0 = 0;
-    commands.insert_resource(ActiveMenuItems(items.0.clone()));
-    spawn_menu(&mut commands, &asset_server, &config, &items.0, &settings);
-}
-
-fn setup_pause_menu(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    config: Res<MenuConfig>,
-    items: Res<PauseMenuItems>,
-    settings: Res<GameSettings>,
-    mut selection: ResMut<MenuSelection>,
-) {
-    selection.0 = 0;
-    commands.insert_resource(ActiveMenuItems(items.0.clone()));
-    spawn_menu(&mut commands, &asset_server, &config, &items.0, &settings);
-}
-
-fn spawn_menu(
-    commands: &mut Commands,
-    asset_server: &Res<AssetServer>,
-    config: &Res<MenuConfig>,
-    items: &[MenuItem],
-    settings: &Res<GameSettings>,
-) {
-    // Spawn dedicated 2D camera for menu UI
-    let camera_entity = commands
-        .spawn((
-            Camera2d,
-            Camera {
-                order: 100,                          // Render after 3D cameras
-                clear_color: ClearColorConfig::None, // Don't clear - preserve 3D scene
-                ..default()
-            },
-            MenuCamera,
-            MenuRoot,
-        ))
-        .id();
-
-    // Spawn menu UI
-    commands
-        .spawn((
-            UiTargetCamera(camera_entity),
-            GlobalZIndex(MENU_ZINDEX),
-            Node {
-                position_type: PositionType::Absolute,
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
-                ..default()
-            },
-            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
-            MenuRoot,
-        ))
-        .with_children(|parent| {
-            parent
-                .spawn(Node {
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(16.0),
-                    ..default()
-                })
-                .with_children(|col| {
-                    for (idx, item) in items.iter().enumerate() {
-                        let label = if matches!(item.action, MenuAction::CycleComplexity) {
-                            format!("Size: {}", settings.complexity.label())
-                        } else {
-                            item.label.clone()
-                        };
-
-                        let mut entity_commands = col.spawn((
-                            Text::new(&label),
-                            TextFont {
-                                font: asset_server.load(&config.font_path).into(),
-                                font_size: FontSize::Px(config.font_size),
-                                ..default()
-                            },
-                            TextColor(if idx == 0 {
-                                config.selected_color
-                            } else {
-                                config.normal_color
-                            }),
-                            MenuItemIndex(idx),
-                        ));
-
-                        if matches!(item.action, MenuAction::CycleComplexity) {
-                            entity_commands.insert(ComplexityMenuItem);
-                        }
-                    }
-                });
-        });
-}
-
-fn cleanup_menu(mut commands: Commands, query: Query<Entity, With<MenuRoot>>) {
-    for entity in &query {
-        commands.entity(entity).despawn();
+fn menu_item_label(item: &MenuItem, settings: &GameSettings) -> String {
+    if matches!(item.action, MenuAction::CycleComplexity) {
+        complexity_label(settings)
+    } else {
+        item.label.clone()
     }
+}
+
+fn complexity_label(settings: &GameSettings) -> String {
+    format!("Size: {}", settings.complexity.label())
+}
+
+fn menu_scene(state: AppState, def: &MenuDef, settings: &GameSettings) -> impl Scene {
+    let screen = MenuScreen {
+        on_escape: def.on_escape.clone(),
+    };
+    let despawn = DespawnOnExit(state);
+    let items = def
+        .items
+        .iter()
+        .enumerate()
+        .map(|(index, item)| {
+            menu_item_scene(
+                MenuEntry {
+                    index,
+                    action: item.action.clone(),
+                },
+                menu_item_label(item, settings),
+            )
+        })
+        .collect::<Vec<_>>();
+    bsn! {
+        #Menu
+        screen
+        despawn
+        on(focus_first_item)
+        GlobalZIndex(MENU_ZINDEX)
+        Node { position_type: PositionType::Absolute, width: percent(100), height: percent(100),
+               align_items: AlignItems::Center, justify_content: JustifyContent::Center }
+        BackgroundColor(BACKDROP_COLOR)
+        Children [
+            Node { flex_direction: FlexDirection::Column, row_gap: rem(0.8) }
+            Children [ {items} ]
+        ]
+    }
+}
+
+fn menu_item_scene(entry: MenuEntry, label: String) -> impl Scene {
+    bsn! {
+        Button
+        TabIndex(0)
+        entry
+        Text({label})
+        TextFont { font: FontSourceTemplate::Handle(MENU_FONT_PATH), font_size: FontSize::Rem(MENU_FONT_REM) }
+        TextColor(NORMAL_COLOR)
+        on(focus_hovered_item)
+        on(activate_item)
+    }
+}
+
+fn focus_first_item(
+    _: On<Ready>,
+    entries: Query<(Entity, &MenuEntry)>,
+    mut focus: ResMut<InputFocus>,
+) {
+    if let Some((entity, _)) = entries.iter().min_by_key(|(_, entry)| entry.index) {
+        focus.set(entity, FocusCause::Navigated);
+    }
+}
+
+fn focus_hovered_item(over: On<PointerOver>, mut focus: ResMut<InputFocus>) {
+    if focus.get() != Some(over.entity) {
+        focus.set(over.entity, FocusCause::Navigated);
+    }
+}
+
+fn activate_item(
+    activate: On<Activate>,
+    entries: Query<&MenuEntry>,
+    mut commands: Commands,
+) -> Result {
+    let entry = entries.get(activate.entity)?;
+    commands.trigger(RunMenuAction(entry.action.clone()));
+    Ok(())
 }
 
 fn navigate_menu(
     keys: Res<ButtonInput<KeyCode>>,
-    mut selection: ResMut<MenuSelection>,
-    items: Res<ActiveMenuItems>,
+    entries: Query<(Entity, &MenuEntry)>,
+    mut focus: ResMut<InputFocus>,
 ) {
-    let count = items.0.len();
+    let up = keys.just_pressed(KeyCode::ArrowUp) || keys.just_pressed(KeyCode::KeyW);
+    let down = keys.just_pressed(KeyCode::ArrowDown) || keys.just_pressed(KeyCode::KeyS);
+    if !up && !down {
+        return;
+    }
+
+    let mut ordered: Vec<_> = entries.iter().collect();
+    ordered.sort_unstable_by_key(|(_, entry)| entry.index);
+    let count = ordered.len();
     if count == 0 {
         return;
     }
 
-    if keys.just_pressed(KeyCode::ArrowUp) || keys.just_pressed(KeyCode::KeyW) {
-        selection.0 = if selection.0 == 0 {
-            count - 1
-        } else {
-            selection.0 - 1
-        };
-    }
+    let current = focus
+        .get()
+        .and_then(|focused| ordered.iter().position(|(entity, _)| *entity == focused));
+    let next = if down {
+        current.map_or(0, |index| (index + 1) % count)
+    } else {
+        current.map_or(count - 1, |index| (index + count - 1) % count)
+    };
+    focus.set(ordered[next].0, FocusCause::Navigated);
+}
 
-    if keys.just_pressed(KeyCode::ArrowDown) || keys.just_pressed(KeyCode::KeyS) {
-        selection.0 = (selection.0 + 1) % count;
+fn highlight_focused_item(
+    focus: Res<InputFocus>,
+    mut items: Query<(Entity, &mut TextColor), With<MenuEntry>>,
+) {
+    for (entity, mut color) in &mut items {
+        color.set_if_neq(TextColor(if focus.get() == Some(entity) {
+            SELECTED_COLOR
+        } else {
+            NORMAL_COLOR
+        }));
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn activate_menu(
-    keys: Res<ButtonInput<KeyCode>>,
-    selection: Res<MenuSelection>,
-    items: Res<ActiveMenuItems>,
+fn menu_escape(keys: Res<ButtonInput<KeyCode>>, menu: Single<&MenuScreen>, mut commands: Commands) {
+    if (keys.just_pressed(KeyCode::Escape) || keys.just_pressed(KeyCode::KeyQ))
+        && let Some(action) = &menu.on_escape
+    {
+        commands.trigger(RunMenuAction(action.clone()));
+    }
+}
+
+fn update_complexity_labels(
+    settings: Res<GameSettings>,
+    mut items: Query<(&MenuEntry, &mut Text)>,
+) {
+    for (entry, mut text) in &mut items {
+        if matches!(entry.action, MenuAction::CycleComplexity) {
+            **text = complexity_label(&settings);
+        }
+    }
+}
+
+fn run_menu_action(
+    action: On<RunMenuAction>,
     mut next_state: ResMut<NextState<AppState>>,
     mut commands: Commands,
     mut settings: ResMut<GameSettings>,
-    mut complexity_query: Query<&mut Text, With<ComplexityMenuItem>>,
-    #[cfg(not(target_arch = "wasm32"))] windows: Query<(Entity, &Window)>,
+    #[cfg(not(target_arch = "wasm32"))] mut exit: MessageWriter<AppExit>,
 ) {
-    if !(keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::Space)) {
-        return;
-    }
-
-    let Some(item) = items.0.get(selection.0) else {
-        return;
-    };
-
-    match &item.action {
-        MenuAction::ChangeState(state) => {
-            next_state.set(state.clone());
-        }
+    match &action.0 {
+        MenuAction::ChangeState(state) => next_state.set(*state),
         MenuAction::RunSystem {
             system,
             next_state: state,
         } => {
             commands.run_system(*system);
-            if let Some(s) = state {
-                next_state.set(s.clone());
+            if let Some(state) = state {
+                next_state.set(*state);
             }
         }
-        MenuAction::CycleComplexity => {
-            settings.complexity = settings.complexity.next();
-            for mut text in &mut complexity_query {
-                **text = format!("Size: {}", settings.complexity.label());
-            }
-        }
+        MenuAction::CycleComplexity => settings.complexity = settings.complexity.next(),
         #[cfg(not(target_arch = "wasm32"))]
         MenuAction::Exit => {
-            for (entity, window) in &windows {
-                if window.focused {
-                    commands.entity(entity).despawn();
-                }
-            }
+            exit.write(AppExit::Success);
         }
     }
 }
 
-fn update_visuals(
-    selection: Res<MenuSelection>,
-    config: Res<MenuConfig>,
-    mut query: Query<(&MenuItemIndex, &mut TextColor)>,
-) {
-    for (item, mut color) in &mut query {
-        color.0 = if item.0 == selection.0 {
-            config.selected_color
-        } else {
-            config.normal_color
+fn pause_game(mut next_state: ResMut<NextState<AppState>>) {
+    next_state.set(AppState::Paused);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use bevy::scene::ScenePlugin;
+    use bevy::state::app::StatesPlugin;
+    use bevy::text::TextPlugin;
+
+    #[test]
+    fn menu_screen_is_despawned_when_its_state_exits() {
+        let mut app = App::new();
+        app.add_plugins((
+            MinimalPlugins,
+            StatesPlugin,
+            AssetPlugin::default(),
+            ScenePlugin,
+            TextPlugin,
+        ))
+        .insert_resource(GameSettings::default())
+        .init_resource::<InputFocus>()
+        .add_plugins(MenuScreenPlugin {
+            state: AppState::Menu,
+            menu_def: MenuDef {
+                items: vec![MenuItem {
+                    label: "Start".to_string(),
+                    action: MenuAction::ChangeState(AppState::InGame),
+                }],
+                on_escape: None,
+            },
+        })
+        .init_state::<AppState>();
+
+        app.update();
+        let mut screens = app.world_mut().query_filtered::<Entity, With<MenuScreen>>();
+        assert_eq!(screens.iter(app.world()).count(), 1);
+        let first_entry = {
+            let world = app.world_mut();
+            let mut entries = world.query::<(Entity, &MenuEntry)>();
+            entries
+                .iter(world)
+                .min_by_key(|(_, entry)| entry.index)
+                .map(|(entity, _)| entity)
         };
-    }
-}
+        assert_eq!(app.world().resource::<InputFocus>().get(), first_entry);
 
-fn esc_in_start_menu(
-    keys: Res<ButtonInput<KeyCode>>,
-    #[cfg(not(target_arch = "wasm32"))] windows: Query<(Entity, &Window)>,
-    #[cfg(not(target_arch = "wasm32"))] mut commands: Commands,
-) {
-    if !keys.just_pressed(KeyCode::Escape) && !keys.just_pressed(KeyCode::KeyQ) {
-        return;
+        app.world_mut()
+            .resource_mut::<NextState<AppState>>()
+            .set(AppState::InGame);
+        app.update();
+
+        assert_eq!(screens.iter(app.world()).count(), 0);
     }
 
-    // ESC/Q in main menu -> exit (non-WASM only)
-    #[cfg(not(target_arch = "wasm32"))]
-    for (entity, window) in &windows {
-        if window.focused {
-            commands.entity(entity).despawn();
-        }
-    }
-}
+    #[test]
+    fn arrow_up_from_first_item_wraps_to_last_and_highlights_it() {
+        let menu_def = MenuDef {
+            items: ["One", "Two", "Three"]
+                .into_iter()
+                .map(|label| MenuItem {
+                    label: label.to_string(),
+                    action: MenuAction::ChangeState(AppState::InGame),
+                })
+                .collect(),
+            on_escape: None,
+        };
+        let mut app = App::new();
+        app.add_plugins((
+            MinimalPlugins,
+            StatesPlugin,
+            AssetPlugin::default(),
+            ScenePlugin,
+            TextPlugin,
+            MenuPlugin,
+        ))
+        .insert_resource(GameSettings::default())
+        .init_resource::<InputFocus>()
+        .init_resource::<ButtonInput<KeyCode>>()
+        .init_state::<AppState>()
+        .add_plugins(MenuScreenPlugin {
+            state: AppState::Menu,
+            menu_def,
+        });
 
-fn esc_in_pause_menu(keys: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<AppState>>) {
-    if keys.just_pressed(KeyCode::Escape) || keys.just_pressed(KeyCode::KeyQ) {
-        next_state.set(AppState::InGame);
-    }
-}
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::ArrowUp);
+        app.update();
 
-fn esc_to_pause(keys: Res<ButtonInput<KeyCode>>, mut next_state: ResMut<NextState<AppState>>) {
-    if keys.just_pressed(KeyCode::Escape) || keys.just_pressed(KeyCode::KeyQ) {
-        next_state.set(AppState::Paused);
+        let (last, first) = {
+            let world = app.world_mut();
+            let mut entries = world.query::<(Entity, &MenuEntry, &TextColor)>();
+            let entries: Vec<_> = entries.iter(world).collect();
+            let last = entries
+                .iter()
+                .find(|(_, entry, _)| entry.index == 2)
+                .map(|(entity, _, color)| (*entity, color.0));
+            let first = entries
+                .iter()
+                .find(|(_, entry, _)| entry.index == 0)
+                .map(|(_, _, color)| color.0);
+            (last, first)
+        };
+        let (last_entity, last_color) = last.expect("last menu entry should exist");
+        assert_eq!(
+            app.world().resource::<InputFocus>().get(),
+            Some(last_entity)
+        );
+        assert_eq!(last_color, SELECTED_COLOR);
+        assert_eq!(first, Some(NORMAL_COLOR));
     }
 }

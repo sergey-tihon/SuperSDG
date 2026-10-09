@@ -5,135 +5,128 @@ use bevy::{
 
 use super::{
     camera::MainCamera,
-    level::{Directions, MazeLevel},
+    level::{Directions, MazeLevel, MazeRegenerated, Vec2i},
 };
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(PlayerTrackedGeneration(None))
-            .add_systems(OnEnter(crate::core::AppState::InGame), setup)
+        app.add_observer(sync_positions_on_maze_regenerated)
+            .add_systems(
+                OnTransition {
+                    exited: crate::core::AppState::Menu,
+                    entered: crate::core::AppState::InGame,
+                },
+                spawn_player_and_exit.after(super::level::apply_selected_complexity),
+            )
             .add_systems(
                 Update,
-                (
-                    sync_positions_on_maze_change,
-                    keyboard_input_system,
-                    animate_player_movement,
-                )
-                    .run_if(in_state(crate::core::AppState::InGame)),
+                keyboard_input_system
+                    .run_if(in_state(crate::core::AppState::InGame))
+                    .in_set(super::MazeSystems::Input),
+            )
+            .add_systems(
+                Update,
+                animate_player_movement
+                    .run_if(in_state(crate::core::AppState::InGame))
+                    .in_set(super::MazeSystems::Movement),
             );
     }
 }
 
-/// Tracks which maze generation the player/exit positions have been synced for.
-#[derive(Resource)]
-struct PlayerTrackedGeneration(Option<u32>);
+#[derive(Component, Default, Clone)]
+#[require(GridPosition, PlayerAnimation, PressedDirectionIndex)]
+pub struct Player;
 
+#[derive(Component, Default, Clone, Copy, Debug, PartialEq)]
+pub struct GridPosition(pub Vec2i);
+
+#[derive(Clone)]
 pub struct AnimationState {
     time: f32,
     direction_index: usize,
 }
 
-#[derive(Component)]
-pub struct PlayerAnimation(Option<AnimationState>);
+#[derive(Component, Default, Clone)]
+struct PlayerAnimation(Option<AnimationState>);
 
-#[derive(Component)]
-pub struct PressedDirectionIndex(Option<usize>);
+#[derive(Component, Default, Clone)]
+struct PressedDirectionIndex(Option<usize>);
 
-#[derive(Component)]
+#[derive(Component, Default, Clone)]
 pub struct ExitPoint;
 
-fn setup(
-    mut commands: Commands,
-    level: Res<MazeLevel>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut standard_materials: ResMut<Assets<StandardMaterial>>,
-    existing_player: Query<Entity, With<PlayerAnimation>>,
-) {
-    if existing_player.single().is_ok() {
-        return;
-    }
+fn spawn_player_and_exit(mut commands: Commands, level: Res<MazeLevel>) {
+    let grid = GridPosition(level.start);
+    let player_pos: Vec3 = level.start.into();
+    let exit_pos: Vec3 = level.exit.into();
+    let player_color: Color = RED.into();
+    let exit_color: Color = LIMEGREEN.into();
 
-    // Add Player
-    let start = level.player_position;
-    commands.spawn((
-        Mesh3d(meshes.add(Sphere { radius: 0.5 })),
-        MeshMaterial3d(standard_materials.add(StandardMaterial {
-            base_color: RED.into(),
-            ..default()
-        })),
-        Transform::from_translation(start.into()),
-        PlayerAnimation(None),
-        PressedDirectionIndex(None),
-    ));
-
-    // Add exit
-    let exit = level.exit_position;
-    commands.spawn((
-        Mesh3d(meshes.add(Sphere { radius: 0.5 })),
-        MeshMaterial3d(standard_materials.add(StandardMaterial {
-            base_color: LIMEGREEN.into(),
-            ..default()
-        })),
-        Transform::from_translation(exit.into()),
-        ExitPoint,
-    ));
+    commands.spawn_scene(bsn! {
+        #Player
+        Player
+        grid
+        Mesh3d(asset_value(Sphere::new(0.5)))
+        MeshMaterial3d::<StandardMaterial>(asset_value(player_color))
+        Transform::from_translation(player_pos)
+    });
+    commands.spawn_scene(bsn! {
+        #Exit
+        ExitPoint
+        Mesh3d(asset_value(Sphere::new(0.5)))
+        MeshMaterial3d::<StandardMaterial>(asset_value(exit_color))
+        Transform::from_translation(exit_pos)
+    });
 }
 
-fn sync_positions_on_maze_change(
+fn sync_positions_on_maze_regenerated(
+    _: On<MazeRegenerated>,
     level: Res<MazeLevel>,
-    mut tracked: ResMut<PlayerTrackedGeneration>,
-    mut player_query: Query<(&mut Transform, &mut PlayerAnimation), Without<ExitPoint>>,
-    mut exit_query: Query<&mut Transform, With<ExitPoint>>,
+    player: Single<(&mut Transform, &mut GridPosition, &mut PlayerAnimation), With<Player>>,
+    mut exit: Single<&mut Transform, (With<ExitPoint>, Without<Player>)>,
 ) {
-    if tracked.0 != Some(level.generation) {
-        tracked.0 = Some(level.generation);
-
-        if let Ok((mut transform, mut animation)) = player_query.single_mut() {
-            transform.translation = level.player_position.into();
-            animation.0 = None; // Cancel any in-progress animation
-        }
-
-        if let Ok(mut transform) = exit_query.single_mut() {
-            transform.translation = level.exit_position.into();
-        }
-    }
+    let (mut transform, mut grid, mut animation) = player.into_inner();
+    grid.0 = level.start;
+    transform.translation = level.start.into();
+    animation.0 = None;
+    exit.translation = level.exit.into();
 }
 
 fn keyboard_input_system(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     level: Res<MazeLevel>,
-    mut player_query: Query<
-        (&mut PlayerAnimation, &mut PressedDirectionIndex),
-        Without<MainCamera>,
+    player: Single<
+        (
+            &GridPosition,
+            &mut PlayerAnimation,
+            &mut PressedDirectionIndex,
+        ),
+        With<Player>,
     >,
-    camera_query: Query<&Transform, With<MainCamera>>,
+    camera: Single<&Transform, With<MainCamera>>,
 ) {
-    if let Ok((mut animation, mut direction_index)) = player_query.single_mut() {
-        if let Some(index_delta) = get_pressed_index_delta(keyboard_input) {
-            if let Ok(camera) = camera_query.single() {
-                let camera_forward = (*camera).forward();
+    let (grid, mut animation, mut direction_index) = player.into_inner();
+    if let Some(index_delta) = get_pressed_index_delta(&keyboard_input) {
+        let camera_forward = camera.forward();
+        let up_direction_index = Directions::get_closest(camera_forward.into());
+        let index = (up_direction_index + index_delta as usize) % 4;
+        direction_index.0 = Some(index);
 
-                let up_direction_index = Directions::get_closest(camera_forward.into());
-                let index = (up_direction_index + index_delta as usize) % 4;
-                direction_index.0 = Some(index);
-
-                let next_position = level.player_position.get_next(index);
-                if animation.0.is_none() && level.is_cell_empty(next_position) {
-                    animation.0 = Some(AnimationState {
-                        time: 0.0,
-                        direction_index: index,
-                    });
-                }
-            }
-        } else {
-            direction_index.0 = None;
+        let next_position = grid.0.get_next(index);
+        if animation.0.is_none() && level.is_cell_empty(next_position) {
+            animation.0 = Some(AnimationState {
+                time: 0.0,
+                direction_index: index,
+            });
         }
+    } else {
+        direction_index.0 = None;
     }
 }
 
-fn get_pressed_index_delta(keyboard_input: Res<'_, ButtonInput<KeyCode>>) -> Option<i32> {
+fn get_pressed_index_delta(keyboard_input: &ButtonInput<KeyCode>) -> Option<i32> {
     if !keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
         if keyboard_input.pressed(KeyCode::ArrowUp) {
             Some(0)
@@ -154,45 +147,96 @@ fn get_pressed_index_delta(keyboard_input: Res<'_, ButtonInput<KeyCode>>) -> Opt
 const MOVEMENT_TIME: f32 = 0.2;
 
 fn animate_player_movement(
-    mut level: ResMut<MazeLevel>,
+    level: Res<MazeLevel>,
     time: Res<Time>,
-    mut player_query: Query<
+    player: Single<
         (
             &mut Transform,
+            &mut GridPosition,
             &mut PlayerAnimation,
-            &mut PressedDirectionIndex,
+            &PressedDirectionIndex,
         ),
-        Without<MainCamera>,
+        With<Player>,
     >,
 ) {
-    if let Ok((mut player_transform, mut player_animation, direction_index)) =
-        player_query.single_mut()
-        && let Some(animation) = &mut player_animation.0
-    {
-        let delta = time.delta_secs();
-        animation.time += delta;
+    let (mut transform, mut grid, mut animation_state, direction_index) = player.into_inner();
+    let Some(animation) = &mut animation_state.0 else {
+        return;
+    };
 
-        let direction_3d = Directions::get_3d(animation.direction_index);
-        if animation.time < MOVEMENT_TIME {
-            // We are still in the middle of the movement animation
-            player_transform.translation += direction_3d * delta / MOVEMENT_TIME;
+    let delta = time.delta_secs();
+    animation.time += delta;
+    let direction_3d = Directions::get_3d(animation.direction_index);
+    if animation.time < MOVEMENT_TIME {
+        transform.translation += direction_3d * delta / MOVEMENT_TIME;
+    } else {
+        grid.0 = grid.0.get_next(animation.direction_index);
+        let next_next_position = grid.0.get_next(animation.direction_index);
+
+        if Some(animation.direction_index) == direction_index.0
+            && level.is_cell_empty(next_next_position)
+        {
+            transform.translation += direction_3d * delta / MOVEMENT_TIME;
+            animation.time -= MOVEMENT_TIME;
         } else {
-            let level = level.as_mut();
-            level.player_position = level.player_position.get_next(animation.direction_index);
-            let next_next_position = level.player_position.get_next(animation.direction_index);
-
-            if Some(animation.direction_index) == direction_index.0
-                && level.is_cell_empty(next_next_position)
-            {
-                // We finished the movement animation, but the player is still pressing the same direction button
-                // so we continue the animation int the same direction for a smooth camera experience
-                player_transform.translation += direction_3d * delta / MOVEMENT_TIME;
-                animation.time -= MOVEMENT_TIME;
-            } else {
-                // We finished the movement animation and the player should stay in the middle of target cell
-                player_transform.translation = level.player_position.into();
-                player_animation.0 = None;
-            }
+            transform.translation = grid.0.into();
+            animation_state.0 = None;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maze_regeneration_syncs_player_and_exit_positions() {
+        let mut app = App::new();
+        app.insert_resource(MazeLevel::new(5, 5))
+            .add_observer(sync_positions_on_maze_regenerated);
+
+        let player = app
+            .world_mut()
+            .spawn((
+                Player,
+                Transform::default(),
+                PlayerAnimation(Some(AnimationState {
+                    time: 0.1,
+                    direction_index: 0,
+                })),
+            ))
+            .id();
+        let exit = app
+            .world_mut()
+            .spawn((Transform::default(), ExitPoint))
+            .id();
+
+        app.world_mut()
+            .resource_mut::<MazeLevel>()
+            .regenerate_with_size(7, 7);
+        let expected_grid = GridPosition(app.world().resource::<MazeLevel>().start);
+        let expected_player: Vec3 = app.world().resource::<MazeLevel>().start.into();
+        let expected_exit: Vec3 = app.world().resource::<MazeLevel>().exit.into();
+        app.world_mut().trigger(MazeRegenerated);
+
+        assert_eq!(
+            app.world().get::<Transform>(player).unwrap().translation,
+            expected_player
+        );
+        assert_eq!(
+            app.world().get::<GridPosition>(player),
+            Some(&expected_grid)
+        );
+        assert!(
+            app.world()
+                .get::<PlayerAnimation>(player)
+                .unwrap()
+                .0
+                .is_none()
+        );
+        assert_eq!(
+            app.world().get::<Transform>(exit).unwrap().translation,
+            expected_exit
+        );
     }
 }

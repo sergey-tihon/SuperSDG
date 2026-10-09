@@ -1,8 +1,12 @@
-use std::f32::consts::{FRAC_PI_2, PI};
+use std::f32::consts::{FRAC_PI_2, TAU};
 
 use bevy::prelude::*;
 
-use super::{level::MazeLevel, player::PlayerAnimation};
+use super::light::flashlight;
+use super::{
+    level::{MazeLevel, MazeRegenerated},
+    player::Player,
+};
 
 pub struct MazeCameraPlugin;
 
@@ -12,21 +16,19 @@ const DEFAULT_ANGLE: f32 = FRAC_PI_2;
 
 impl Plugin for MazeCameraPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(CameraSettings {
-            height: DEFAULT_HEIGHT,
-            radius: DEFAULT_RADIUS,
-            angle: DEFAULT_ANGLE,
-        })
-        .insert_resource(CameraTrackedGeneration(None))
-        .add_systems(Startup, setup.in_set(super::CameraSwawned))
-        .add_systems(
-            Update,
-            (
-                reset_camera_on_maze_change,
-                keyboard_input_system.run_if(in_state(crate::core::AppState::InGame)),
-                update_camera_position,
-            ),
-        );
+        app.init_resource::<CameraSettings>()
+            .add_observer(reset_camera_on_maze_regenerated)
+            .add_systems(Startup, setup)
+            .add_systems(
+                Update,
+                keyboard_input_system
+                    .run_if(in_state(crate::core::AppState::InGame))
+                    .in_set(super::MazeSystems::Input),
+            )
+            .add_systems(
+                Update,
+                update_camera_position.in_set(super::MazeSystems::Camera),
+            );
     }
 }
 
@@ -37,32 +39,37 @@ pub struct CameraSettings {
     pub angle: f32,
 }
 
-/// Tracks which maze generation the camera has been reset for.
-#[derive(Resource)]
-struct CameraTrackedGeneration(Option<u32>);
-
-#[derive(Component)]
+impl Default for CameraSettings {
+    fn default() -> Self {
+        Self {
+            height: DEFAULT_HEIGHT,
+            radius: DEFAULT_RADIUS,
+            angle: DEFAULT_ANGLE,
+        }
+    }
+}
+#[derive(Component, Default, Clone)]
 #[require(Camera3d)]
 pub struct MainCamera;
 
-// Setup camera objects but without any exact position
-// Proper position will be calculated by `CameraChangedEvent` handler
-fn setup(mut commands: Commands) {
-    // Main camera (spawn 3D camera component so UI can target it)
-    let _ = commands.spawn((Camera3d::default(), MainCamera)).id();
+fn setup(mut commands: Commands, level: Res<MazeLevel>, settings: Res<CameraSettings>) {
+    let player_start: Vec3 = level.start.into();
+    let position = get_camera_position(player_start, &settings);
+    let transform =
+        Transform::from_xyz(position.x, position.y, position.z).looking_at(player_start, Vec3::Y);
+    commands.spawn_scene(bsn! {
+        #MainCamera
+        MainCamera
+        transform
+        Children [ @flashlight() ]
+    });
 }
 
-fn reset_camera_on_maze_change(
-    level: Res<MazeLevel>,
-    mut tracked: ResMut<CameraTrackedGeneration>,
+fn reset_camera_on_maze_regenerated(
+    _: On<MazeRegenerated>,
     mut camera_settings: ResMut<CameraSettings>,
 ) {
-    if tracked.0 != Some(level.generation) {
-        tracked.0 = Some(level.generation);
-        camera_settings.height = DEFAULT_HEIGHT;
-        camera_settings.radius = DEFAULT_RADIUS;
-        camera_settings.angle = DEFAULT_ANGLE;
-    }
+    *camera_settings = CameraSettings::default();
 }
 
 const HEIGHT_MIN: f32 = 3.0;
@@ -77,31 +84,24 @@ fn keyboard_input_system(
     keyboard_input: Res<ButtonInput<KeyCode>>,
     mut camera_settings: ResMut<CameraSettings>,
 ) {
+    let delta = time.delta_secs();
     if keyboard_input.any_pressed([KeyCode::ShiftLeft, KeyCode::ShiftRight]) {
         if keyboard_input.pressed(KeyCode::ArrowLeft) {
-            camera_settings.angle -= ANGLE_MOVE_SPEED * time.delta_secs();
-            if camera_settings.angle < 0.0 {
-                camera_settings.angle += 2.0 * PI;
-            }
+            camera_settings.angle =
+                (camera_settings.angle - ANGLE_MOVE_SPEED * delta).rem_euclid(TAU);
         }
         if keyboard_input.pressed(KeyCode::ArrowRight) {
-            camera_settings.angle += ANGLE_MOVE_SPEED * time.delta_secs();
-            if camera_settings.angle > 2.0 * PI {
-                camera_settings.angle -= 2.0 * PI;
-            }
+            camera_settings.angle =
+                (camera_settings.angle + ANGLE_MOVE_SPEED * delta).rem_euclid(TAU);
         }
         if keyboard_input.pressed(KeyCode::ArrowDown) {
-            camera_settings.height -= HEIGHT_MOVE_SPEED * time.delta_secs();
-            if camera_settings.height < HEIGHT_MIN {
-                camera_settings.height = HEIGHT_MIN;
-            }
+            camera_settings.height =
+                (camera_settings.height - HEIGHT_MOVE_SPEED * delta).clamp(HEIGHT_MIN, HEIGHT_MAX);
             adjust_radius_based_on_height(&mut camera_settings);
         }
         if keyboard_input.pressed(KeyCode::ArrowUp) {
-            camera_settings.height += HEIGHT_MOVE_SPEED * time.delta_secs();
-            if camera_settings.height > HEIGHT_MAX {
-                camera_settings.height = HEIGHT_MAX;
-            }
+            camera_settings.height =
+                (camera_settings.height + HEIGHT_MOVE_SPEED * delta).clamp(HEIGHT_MIN, HEIGHT_MAX);
             adjust_radius_based_on_height(&mut camera_settings);
         }
     }
@@ -126,20 +126,16 @@ fn adjust_radius_based_on_height(camera_settings: &mut CameraSettings) {
 
 fn update_camera_position(
     camera_settings: Res<CameraSettings>,
-    player_position: Query<Ref<Transform>, (With<PlayerAnimation>, Without<MainCamera>)>,
-    mut main_camera: Query<&mut Transform, With<MainCamera>>,
+    player: Single<Ref<Transform>, (With<Player>, Without<MainCamera>)>,
+    mut camera: Single<&mut Transform, With<MainCamera>>,
 ) {
-    if let Ok(player) = player_position.single()
-        && (camera_settings.is_changed() || player.is_changed())
-    {
-        let camera = get_camera_position(player.translation, &camera_settings);
-
-        // Main camera position update
-        if let Ok(mut main_camera) = main_camera.single_mut() {
-            *main_camera = Transform::from_xyz(camera.x, camera.y, camera.z)
-                .looking_at(player.translation, Vec3::Y);
-        }
+    if !(camera_settings.is_changed() || player.is_changed()) {
+        return;
     }
+
+    let position = get_camera_position(player.translation, &camera_settings);
+    **camera = Transform::from_xyz(position.x, position.y, position.z)
+        .looking_at(player.translation, Vec3::Y);
 }
 
 fn get_camera_position(player: Vec3, camera_settings: &CameraSettings) -> Vec3 {
